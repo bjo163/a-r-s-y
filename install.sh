@@ -10,12 +10,6 @@ die() { printf '\n[ARSY][ERROR] %s\n' "$*" >&2; exit 1; }
 [[ -f /etc/os-release ]] || die "/etc/os-release not found."
 . /etc/os-release
 
-ARCH="$(dpkg --print-architecture)"
-case "$ARCH" in
-  amd64|arm64) ;;
-  *) die "Unsupported architecture: $ARCH. Supported architectures: amd64 and arm64." ;;
-esac
-
 case "${ID:-}" in
   ubuntu)
     [[ "${VERSION_ID%%.*}" -ge 22 ]] || die "Ubuntu 22.04 or newer is required."
@@ -35,6 +29,12 @@ if [[ -f /var/lib/arsy/deployed-sha && "${1:-}" != "--repair" ]]; then
   log "Use 'sudo arsy-update' to check for an update, or run 'sudo bash install.sh --repair' for an explicit repair/reinstall."
   exit 0
 fi
+
+ARCH="$(dpkg --print-architecture)"
+case "$ARCH" in
+  amd64|arm64) ;;
+  *) die "Unsupported architecture: $ARCH. Supported architectures: amd64 and arm64." ;;
+esac
 if [[ -n "${1:-}" && "${1:-}" != "--repair" ]]; then
   die "Usage: sudo bash install.sh [--repair]"
 fi
@@ -76,7 +76,7 @@ if [[ "$NEED_DOCKER_CLI" -eq 1 || "$NEED_COMPOSE_PLUGIN" -eq 1 ]]; then
   curl -fsSL "https://download.docker.com/linux/$DISTRO/gpg" -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
   printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
-    "$(dpkg --print-architecture)" "$DISTRO" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
+    "$ARCH" "$DISTRO" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
   apt-get update
 
   if [[ "$NEED_DOCKER_CLI" -eq 1 ]]; then
