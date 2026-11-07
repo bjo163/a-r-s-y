@@ -10,11 +10,11 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Main base SHA: 9bf2d20. Latest observed branch run before concurrency deduplication: 42393572983 on b239272; job validate was queued with no runner assignment or steps. GitHub Status showed Actions operational and no Nov 7 incident, so the exact cause is still unconfirmed and may be repository/account-specific. The workflow now uses the PR head branch as its concurrency key so push and PR events for the same branch do not consume duplicate runner slots. Re-check the newest run after this change; this is not a pass or test failure.
-  - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read. Push and PR events now share a branch-scoped concurrency group to avoid duplicate runs.
+  - Current PR head: `0502ff30a3696a596fb6fb3eab87efffb5c997f1`; base main: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
+  - Latest PR workflow run: `42394245690` (`pull_request`), status `queued`; job `validate` has no runner assignment and no executed steps. The same-SHA push run `42394241695` was cancelled by branch-scoped concurrency; cancellation is not a pass or test failure.
+  - Combined commit status has no completed status entries. CI is unverified until the latest exact-head run executes, reaches a terminal result, and its logs/artifacts are reviewed.
+  - GitHub Actions public status was operational during the prior check; exact queue cause remains unconfirmed and may be repository/account-specific. Repository/org Actions administrator must inspect Actions policy and hosted-runner availability/quotas.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
-  - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
-  - Complete only when a current-main run reaches a terminal result and its actual job steps/logs are reviewed.
 - [~] P0.2 — Compose configuration validation
   - CI runs docker compose config --quiet with CI-only dummy environment values.
   - No containers are deployed and no real credentials are used.
