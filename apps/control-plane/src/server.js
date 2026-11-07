@@ -386,6 +386,8 @@ app.get('/login', async (_request, reply) => {
 });
 
 app.get('/dashboard', { preHandler: requirePageAuth }, async (request, reply) => {
+  const onboarding = await pool.query('SELECT onboarding_complete FROM arsy_installation_profile WHERE id = 1');
+  if (!onboarding.rows[0]?.onboarding_complete) return reply.redirect('/onboarding');
   return reply.type('text/html; charset=utf-8').send(
     dashboardPage(request.arsySession.user, request.arsySession.csrfToken)
   );
