@@ -10,7 +10,7 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Latest implementation commit checked: 9f6d647. Its Actions run 42368016667 is queued; the validate job has no assigned runner (runner_id=null) and no executed steps. Recheck the newest run on current main before making any pass/fail claim.
+  - Latest main commit checked: 0e9041e. Actions run 42368111729 is queued; its validate job has runner_id=0 and no executed steps. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
   - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
   - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
@@ -73,7 +73,7 @@ Status key:
 - [x] Added docs/INDEX.md as the canonical document map and source-of-truth precedence.
 - [~] Cross-document links have a CI checker and are included in CI; workflow run is pending.
 - [x] Roadmap milestones declare entry and exit gates.
-- [~] Handoff is updated for implementation through code commit 9f6d647; refresh again after new CI or VPS evidence.
+- [~] Handoff verification snapshot is synchronized through code commit 0e9041e; refresh again after new CI or VPS evidence.
 
 ## Explicitly not next
 

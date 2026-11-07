@@ -98,7 +98,7 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 
 ### P0 — CI and automated verification
 1. Workflow has Compose config validation, PostgreSQL disposable integration, Caddy validation, Bash syntax, isolated migration/domain/deploy regression and Markdown link checking.
-2. Latest code commit 828a486 generated run 42367315230; at last check the validate job was queued with runner_id=null and zero steps. This is neither a pass nor a test failure.
+2. Latest main commit 0e9041e315971d9246fe46e0ee39c5d65d9abca7 generated Actions run 42368111729; at the latest check the validate job was queued with runner_id=0 and zero executed steps. This is neither a pass nor a test failure. An Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status.
 3. Do not lower permissions or add secrets. A repository/org Actions administrator must check runner availability, quotas and Actions policy if the queue remains stalled.
 4. After CI runs, fix observed failures, rerun on resulting SHA, and retain actual logs.
 
@@ -177,8 +177,8 @@ Never use `docker compose down -v` as routine repair/update; it deletes the data
 
 ## 8. Verification snapshot at handoff
 
-- Latest code commit before this documentation refresh: 828a4867c7001b485cffa98f90d7574da11ac183.
-- Latest GitHub Actions run checked for that SHA: 42367315230; status queued, job validate has no assigned runner (runner_id=null) and no steps. Do not report CI as passing.
+- Latest implementation commit at this documentation refresh: 0e9041e315971d9246fe46e0ee39c5d65d9abca7.
+- Latest GitHub Actions run checked for current main: 42368111729; status queued, job validate has runner_id=0 and no executed steps. Do not report CI as passing.
 - Automated CI includes Node unit/integration tests, PostgreSQL 17 service, Compose config, Caddy validation, shell syntax, environment/domain/deploy lifecycle mocks and Markdown local-link checking.
 - GitHub issue and PR collections were empty at the latest task audit; recheck before new work.
 - No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
