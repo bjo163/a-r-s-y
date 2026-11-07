@@ -50,7 +50,12 @@ docker info >/dev/null 2>&1 || die "Docker daemon is not responding."
 docker compose version >/dev/null 2>&1 || die "Docker Compose plugin is not available."
 
 if [[ -d "$APP_DIR/.git" ]]; then
-  log "Existing A-R-S-Y checkout found. Preserving .env and local data."
+  if [[ -s /var/lib/arsy/deployed-sha ]]; then
+    log "A-R-S-Y is already installed. The installer will not update it automatically."
+    log "Use the consent-based update command instead: sudo arsy-update"
+    exit 0
+  fi
+  log "Existing pre-alpha checkout found. Preserving .env and local data."
 elif [[ -e "$APP_DIR" && -n "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
   die "$APP_DIR exists and is not an A-R-S-Y checkout. Move it or set ARSY_APP_DIR."
 else
