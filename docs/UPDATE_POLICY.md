@@ -4,66 +4,47 @@
 
 A-R-S-Y must NEVER update itself silently.
 
-The application detects that a newer version is available and asks the operator:
+The dashboard checks whether a newer commit exists and asks the Superadmin:
+- **Update now:** explicitly approve the exact commit.
+- **Later:** dismiss the notice. Keep the current version and data unchanged.
 
-> A-R-S-Y update available. Do you want to update now?
+A Git push, merge to main, new release, or version detection must never trigger a VPS deployment by itself.
 
-The operator chooses:
-- **Update now:** show the update details and explicitly confirm. Only then start the update.
-- **Later:** dismiss the notification. Keep the current version and data unchanged.
+## Current single-VPS flow
 
-A Git push, merge to main, new release, or detected version must never trigger a VPS deployment by itself.
+1. The app reads the installed commit from /var/lib/arsy/deployed-sha.
+2. An authenticated Superadmin dashboard checks GitHub main.
+3. When a newer commit exists, the dashboard displays the current version, available version, and commit message.
+4. The Superadmin chooses Update now and confirms.
+5. The Core API records the approval and displays a command containing the exact approved SHA.
+6. The operator runs that exact command in the VPS terminal.
+7. The updater verifies that the approved commit still belongs to main, then deploys that commit.
+8. The deploy runner builds the app, validates Compose, starts services, checks health, and attempts rollback on failure.
 
-## Simple first-VPS behavior
+The browser never receives root credentials, a Docker socket, or an unrestricted shell. The terminal step is deliberate in this foundation build. A future host-side update agent may apply a confirmed request without exposing host privileges to the web process.
 
-The current foundation is a static gateway, so the full one-click application update flow is not available yet. For now:
-
-1. The installed app version is recorded in `/var/lib/arsy/deployed-sha` and served as `/version.json`.
-2. The operator can check for an update by running `sudo arsy-update`.
-3. The script compares the installed commit with GitHub main.
-4. It displays the current and available commit and asks `Do you want to update A-R-S-Y now? [y/N]`.
-5. Only an explicit yes deploys the exact commit. Any other answer exits without changing the running version.
-
-The future Core Console will perform the detection and show the same question inside the app. The authenticated Core API will execute the same local update runner only after an authenticated operator confirms. Do not expose a root shell or Docker socket to the browser.
-
-## Rules for the future app UI
-
-- Check the official release channel (preferred) or configured update channel.
-- Show installed version, available version, release date, and concise changelog.
-- Never force an update or reload the page without approval.
-- "Later" must preserve the installed version and allow another check later.
-- "Update now" must show a confirmation step and state whether a restart or brief downtime is expected.
-- The backend must re-check the target version and authorization before starting.
-- Serialize updates; do not run two updates concurrently.
-- Validate configuration, apply the update, run health checks, and attempt rollback on failure.
-- Display progress and the final result. Never report success before health verification.
-- Preserve customer configuration and persistent data.
-- Do not use an untrusted client-supplied commit SHA. Resolve an approved release from the server-side update channel.
-
-## GitHub behavior
-
-- GitHub pushes to main run CI only.
-- GitHub Releases do not deploy automatically.
-- No GitHub Actions SSH key, VPS deploy secret, or deployment workflow is required.
-- A human may trigger a release, but publishing it only makes an update available; it does not install it.
-
-## Manual emergency update
-
-On the VPS:
+## Terminal check
 
 ~~~bash
 sudo arsy-update
 ~~~
 
-To inspect current deployed version:
+This checks the current main, shows the commit, and asks for confirmation. Any answer other than yes leaves the running system unchanged.
 
-~~~bash
-cat /var/lib/arsy/deployed-sha
-cat /opt/arsy/site/version.json
-~~~
+## GitHub behavior
 
-To inspect update logs:
+- Pushes to main run CI only.
+- Publishing a GitHub Release does not deploy to the VPS.
+- No GitHub SSH deploy key or VPS deploy secret is required.
+- A new commit only becomes an available update; installation always requires operator consent.
 
-~~~bash
-sudo tail -n 100 /var/log/arsy/deploy.log
-~~~
+## Safety
+
+- Serialize deployments with a host-side lock.
+- Deploy the exact approved commit SHA; never silently switch to a newer SHA after approval.
+- Validate Compose before starting services.
+- Health-check the web application and database.
+- Attempt rollback to the last known-good source revision if startup or health checks fail.
+- Preserve .env and persistent PostgreSQL volumes.
+- Database schema changes must be backward-compatible and additive until a tested migration framework exists.
+- Never delete persistent volumes during update or rollback.
