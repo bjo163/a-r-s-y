@@ -18,8 +18,10 @@ Proposed project licensing:
 - The installer does not rewrite sshd or firewall policy.
 - .env is excluded from Git and set to mode 0600 by the installer.
 - Updates require an explicit operator confirmation.
-- Caddy trusts forwarded client metadata only from private proxy peers; Fastify trusts exactly its immediate Caddy hop.
-- The supported existing-proxy topology is a same-host reverse proxy to 127.0.0.1:18080. Remote/untrusted proxy networks are not implicitly trusted.
+- Fastify trusts exactly one immediate proxy hop (Caddy); the application is not published directly.
+- SSH recovery uses its own loopback listener at 127.0.0.1:18080 and does not forward client-supplied proxy metadata.
+- Existing same-host TLS proxies use a separate loopback listener at 127.0.0.1:18082. Only that ingress forwards metadata from the local proxy; Nginx must overwrite X-Forwarded-For with the observed peer address.
+- Remote/untrusted proxy networks and multi-hop chains are not implicitly trusted or supported in the first-VPS mode.
 - The browser does not receive root credentials or the Docker socket.
 
 ## Before customer beta

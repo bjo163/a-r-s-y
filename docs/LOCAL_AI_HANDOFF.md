@@ -30,7 +30,7 @@ A-R-S-Y is an open-source, customer-owned infrastructure control plane. It coord
 2. **Managed public domain:** user creates DNS A record to VPS IPv4 and allows inbound TCP 80/443 in provider firewall. User explicitly runs `sudo arsy-domain apply --hostname panel.example.com`; helper validates prerequisites, ports, DNS, and address, explains changes, asks confirmation, enables Caddy HTTPS, and performs a health check with rollback.
 3. **Existing reverse proxy:** keep A-R-S-Y on loopback and configure the user's proxy to `http://127.0.0.1:18080`. TLS terminates at that proxy. Do not take over public ports.
 
-Current public domain helper is IPv4-only and rejects an AAAA result. Do not describe IPv6 domain activation as supported.
+Current public domain helper is IPv4-only and rejects an AAAA result. Do not describe IPv6 domain activation as supported. Existing same-host reverse proxy uses 127.0.0.1:18082; private SSH recovery remains 127.0.0.1:18080.
 
 ### Updates
 - Detection is not deployment.

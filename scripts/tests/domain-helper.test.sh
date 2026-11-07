@@ -113,5 +113,7 @@ grep -q '^ARSY_PUBLIC_HTTP_BIND=0.0.0.0$' "$dir/app/.env" || fail "public HTTP b
 grep -q '^ARSY_PUBLIC_HTTPS_BIND=0.0.0.0$' "$dir/app/.env" || fail "public HTTPS bind not enabled"
 grep -q '^ARSY_COOKIE_SECURE=true$' "$dir/app/.env" || fail "Secure cookie flag not enabled"
 grep -q '"status":"active"' "$dir/state/domain-state" || fail "success marker missing"
-grep -q 'trusted_proxies static private_ranges' "$dir/state/Caddyfile" || fail "trusted proxy policy missing"
+grep -q '^:8080 {' "$dir/state/Caddyfile" || fail "private SSH recovery listener missing"
+grep -q '^:8081 {' "$dir/state/Caddyfile" || fail "dedicated local proxy listener missing"
+grep -q 'header_up X-Forwarded-For {http.request.header.X-Forwarded-For}' "$dir/state/Caddyfile" || fail "proxy forwarded-header pass-through missing"
 printf '[PASS] domain validation, private recovery, rollback and managed activation matrix.\n'

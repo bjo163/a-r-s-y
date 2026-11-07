@@ -47,7 +47,7 @@ set_env(){
 }
 if [[ "$MODE" == "proxy" ]]; then
   log "Existing reverse proxy mode selected."
-  log "Keep A-R-S-Y bound to 127.0.0.1:18080. Configure your proxy upstream to http://127.0.0.1:18080."
+  log "Keep SSH recovery on 127.0.0.1:18080. Configure the same-host TLS proxy upstream to http://127.0.0.1:18082."
   cat <<EOF
 
 Nginx example (TLS must terminate at your existing proxy):
@@ -56,11 +56,12 @@ server {
     listen 443 ssl;
     server_name $HOSTNAME;
     location / {
-        proxy_pass http://127.0.0.1:18080;
+        proxy_pass http://127.0.0.1:18082;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
     }
 }
 
@@ -142,13 +143,6 @@ on_error(){
 }
 trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
 cat > "$CADDY_FILE" <<EOF
-{
-    servers {
-        trusted_proxies static private_ranges
-        trusted_proxies_strict
-    }
-}
-
 $HOSTNAME {
     encode zstd gzip
     reverse_proxy app:3000
@@ -156,6 +150,14 @@ $HOSTNAME {
 
 :8080 {
     reverse_proxy app:3000
+}
+
+:8081 {
+    reverse_proxy app:3000 {
+        header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
+        header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+        header_up X-Forwarded-Host {http.request.header.X-Forwarded-Host}
+    }
 }
 EOF
 set_env ARSY_PUBLIC_HTTP_BIND "0.0.0.0"

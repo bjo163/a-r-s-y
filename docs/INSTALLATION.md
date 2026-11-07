@@ -89,7 +89,7 @@ The current helper supports IPv4 only and rejects an AAAA record. A-R-S-Y does n
 Keep A-R-S-Y private and configure the existing proxy upstream to:
 
 ```text
-http://127.0.0.1:18080
+http://127.0.0.1:18082
 ```
 
 Run `sudo arsy-domain proxy --hostname panel.example.com` to print example guidance. TLS terminates at the existing proxy. Enable Secure cookies only after HTTPS and trusted forwarded-protocol handling are verified. A-R-S-Y does not take over ports 80/443 in this mode.
