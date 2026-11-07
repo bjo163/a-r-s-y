@@ -72,6 +72,7 @@ services:
     restart: unless-stopped
     ports:
       - "${ARSY_HTTP_BIND:-127.0.0.1}:${ARSY_HTTP_PORT:-18080}:80"
+      - "${ARSY_HTTPS_BIND:-127.0.0.1}:${ARSY_HTTPS_PORT:-18443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
