@@ -108,6 +108,23 @@
     })();
   }
 
+  const nodeTime = document.getElementById('node-time');
+  if (nodeTime) {
+    const timezone = nodeTime.dataset.timezone || 'Asia/Jakarta';
+    try {
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        timeZone: timezone,
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+      const renderNodeTime = function () { nodeTime.textContent = formatter.format(new Date()); };
+      renderNodeTime();
+      window.setInterval(renderNodeTime, 60000);
+    } catch {
+      nodeTime.textContent = 'Invalid timezone';
+    }
+  }
+
   const updateCard = document.getElementById('update-card');
   if (updateCard) {
     const updateCopy = document.getElementById('update-copy');

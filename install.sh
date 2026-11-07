@@ -109,6 +109,7 @@ ensure_env() {
 }
 
 touch .env
+bash scripts/arsy-env-migrate.sh .env
 ensure_env ARSY_HTTP_PORT "18080"
 ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
 ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
@@ -130,6 +131,8 @@ install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
+install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
+install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
 
 log "Installing A-R-S-Y Core and database. This may take a few minutes."
 /usr/local/sbin/arsy-deploy "$TARGET_SHA"

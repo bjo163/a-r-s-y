@@ -27,6 +27,7 @@ exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
 cd "$APP_DIR"
 [[ -f .env ]] || die "Missing $APP_DIR/.env."
 chmod 0600 .env
+bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"
 
 # Runtime gateway configuration must survive Git checkouts and updates.
 install -d -m 0755 /var/lib/arsy
@@ -43,8 +44,11 @@ ensure_env() {
   fi
 }
 
-ensure_env ARSY_HTTP_BIND "127.0.0.1"
 ensure_env ARSY_HTTP_PORT "18080"
+ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
+ensure_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTPS_PORT "18444"
 ensure_env TZ "Asia/Jakarta"
 ensure_env POSTGRES_DB "arsy"
 ensure_env POSTGRES_USER "arsy"
@@ -122,6 +126,8 @@ install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
+install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
+install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
 compose ps

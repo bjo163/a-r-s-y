@@ -16,15 +16,34 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: arsy_test
+          POSTGRES_USER: arsy_test
+          POSTGRES_PASSWORD: arsy_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arsy_test -d arsy_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: arsy_test
+      DB_USER: arsy_test
+      DB_PASSWORD: arsy_test_password
+      ARSY_INTEGRATION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
-
       - name: Install and test control plane
         working-directory: apps/control-plane
         run: |
@@ -32,13 +51,21 @@ jobs:
           npm test
           node --check src/server.js
           node --check public/app.js
-
-      - name: Validate shell scripts
+      - name: Validate Docker Compose configuration
+        env:
+          POSTGRES_PASSWORD: ci-only-dummy-password
+          ARSY_SETUP_TOKEN: ci-only-dummy-bootstrap-token
+          ARSY_SESSION_SECRET: ci-only-dummy-session-secret
+        run: docker compose --env-file .env.example -f compose.yaml config --quiet
+      - name: Validate Caddy configuration
+        run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Validate shell scripts and isolated regression tests
         shell: bash
         run: |
           set -euo pipefail
           bash -n install.sh
-          bash -n scripts/arsy-deploy.sh
-          bash -n scripts/arsy-update.sh
-          bash -n scripts/arsy-doctor.sh
-          bash -n scripts/arsy-domain.sh
+          for script in scripts/*.sh scripts/tests/*.sh; do bash -n "$script"; done
+          bash scripts/tests/env-migrate.test.sh
+          bash scripts/tests/network-validation.test.sh
+      - name: Validate documentation links
+        run: node scripts/check-doc-links.mjs

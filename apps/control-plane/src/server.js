@@ -51,10 +51,11 @@ const secureCookie = env.ARSY_COOKIE_SECURE === 'true';
 const rateBuckets = new Map();
 let updateCache = { checkedAt: 0, value: null };
 
-function page(title, body, csrf = '') {
+function page(title, body, csrf = '', language = 'id') {
   const safeTitle = escapeHtml(title);
+  const safeLanguage = ['id', 'en'].includes(language) ? language : 'id';
   const csrfMeta = csrf ? '<meta name="csrf-token" content="' + escapeHtml(csrf) + '">' : '';
-  return '<!doctype html><html lang="id"><head><meta charset="utf-8">' +
+  return '<!doctype html><html lang="' + safeLanguage + '"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="theme-color" content="#090d12">' + csrfMeta +
     '<title>' + safeTitle + ' · A-R-S-Y</title>' +
@@ -106,10 +107,25 @@ function authPage(kind) {
   );
 }
 
-function dashboardPage(user, csrf) {
+function dashboardPage(user, csrf, profile = {}, domainState = null) {
   const safeName = escapeHtml(user.display_name);
   const safeEmail = escapeHtml(user.email);
   const initials = escapeHtml(user.display_name.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase());
+  const timezone = String(profile.timezone || 'Asia/Jakarta');
+  const safeTimezone = escapeHtml(timezone);
+  const dns = profile.dnsCheck && typeof profile.dnsCheck === 'object' ? profile.dnsCheck : null;
+  const dnsState = !dns ? 'Belum diperiksa' : dns.matches === true ? 'A record cocok' : dns.matches === false ? 'A record belum cocok' : 'DNS diagnostic selesai';
+  const dnsDetails = dns ? 'A: ' + escapeHtml((dns.a || []).join(', ') || '—') + ' · AAAA: ' + escapeHtml((dns.aaaa || []).join(', ') || '—') + ' · ' + escapeHtml(dns.checkedAt || 'time unavailable') : 'DNS diagnostic belum dijalankan.';
+  const domainVerified = Boolean(domainState && domainState.status === 'active' && domainState.hostname === profile.hostname);
+  const accessTitle = profile.accessMode === 'public'
+    ? (domainVerified ? 'Managed domain activation verified' : 'Needs operator activation')
+    : profile.accessMode === 'proxy' ? 'Existing proxy · operator managed' : 'Private SSH tunnel';
+  const accessDetails = profile.accessMode === 'public'
+    ? (domainVerified ? escapeHtml(domainState.hostname) + ' · Local HTTPS health check passed at ' + escapeHtml(domainState.verifiedAt || 'unknown time') + '. Not an external uptime check.' : 'Profile saved only. After DNS A and provider firewall are ready, run sudo arsy-domain apply --hostname ' + escapeHtml(profile.hostname || 'panel.example.com') + '.')
+    : profile.accessMode === 'proxy'
+      ? 'TLS and external reachability are operator-managed and not verified by Core.'
+      : 'Private SSH tunnel is the default and recovery path.';
+  const languageNote = profile.language === 'en' ? 'English preference saved; interface is not fully translated yet.' : 'Preferensi bahasa tersimpan; antarmuka belum sepenuhnya diterjemahkan.';
   const body =
     '<main class="dashboard">' +
     '<aside class="sidebar"><div class="side-label">COMMAND</div><a class="nav-item active" href="/dashboard"><span>◈</span> Overview</a>' +
@@ -133,6 +149,7 @@ function dashboardPage(user, csrf) {
     '<article class="service-card"><div class="service-icon">⤳</div><div><h3>ARSY Passage</h3><p>Secure tunnel and private origin.</p></div><span class="service-state planned">PLANNED</span></article>' +
     '<article class="service-card"><div class="service-icon">▤</div><div><h3>ARSY Vault</h3><p>Object storage and buckets.</p></div><span class="service-state planned">PLANNED</span></article></div>' +
     '<section class="update-card" id="update-card" hidden><div><div class="eyebrow">VERSION CONTROL</div><h2>Update available</h2><p id="update-copy">A newer A-R-S-Y version is ready. Nothing changes without your approval.</p><p class="command-line" id="update-command" hidden></p></div><div class="update-actions"><button id="update-now" class="button button-primary" type="button">Review update</button><button id="update-later" class="button button-quiet" type="button">Later</button><button id="copy-update" class="button button-quiet" type="button" hidden>Copy command</button></div></section>' +
+    '<div class="bottom-grid"><article class="info-card"><div class="eyebrow">INSTALLATION PROFILE</div><h3>Saved preferences</h3><p>' + languageNote + '</p><p>Timezone: <strong>' + safeTimezone + '</strong></p><p>Node time: <time id="node-time" data-timezone="' + safeTimezone + '">Loading…</time></p></article><article class="info-card"><div class="eyebrow">NETWORK & ACCESS</div><h3>' + accessTitle + '</h3><p>' + accessDetails + '</p><p><strong>DNS diagnostic:</strong> ' + dnsState + '</p><p class="stat-meta">' + dnsDetails + '</p><p class="stat-meta">Saved profile, DNS observation, and verified domain activation are separate states.</p></article></div>' +
     '<div class="bottom-grid"><article class="info-card"><div class="eyebrow">OPERATOR IDENTITY</div><h3>Superadmin protected</h3><p>' + safeEmail + '</p><span class="pill pill-live">PLATFORM OWNER</span></article>' +
     '<article class="info-card"><div class="eyebrow">NEXT STEP</div><h3>Configure your first services</h3><p>Core foundation is running. DNS, edge, tunnel, storage and compute will be enabled in later milestones.</p></article></div>' +
     '<p class="dashboard-version">A-R-S-Y FOUNDATION · ONE COMMAND PLANE. OPEN BY DESIGN.</p></section></main>';
@@ -169,7 +186,25 @@ function onboardingPage(user, csrf, profile = {}) {
     '<div class="wizard-section"><div class="panel-kicker">04 / REVIEW</div><h2>Save your installation profile.</h2>' +
     '<p class="muted">Saving records your choices only. Applying a public domain, opening ports, and requesting TLS will require a separate reviewed host operation. Private SSH access remains the recovery path.</p>' +
     '<div class="form-message" id="wizard-message" role="status"></div><button class="button button-primary" type="submit">Save & finish setup <span>↗</span></button></div>' +
-    '</form></main>', csrf);
+    '<p class="muted">Preferensi bahasa disimpan, tetapi antarmuka belum sepenuhnya diterjemahkan. Timezone IANA yang valid digunakan untuk menampilkan waktu node.</p>' +
+    '</form></main>', csrf, profile.language || 'id');
+}
+
+function isValidTimeZone(value) {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date(0));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readDomainState() {
+  try {
+    return JSON.parse(await readFile(env.ARSY_DOMAIN_STATE_FILE || '/var/lib/arsy/domain-state', 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function cookieValue(header, name) {
@@ -295,7 +330,7 @@ function requireCsrf(request, reply) {
 
 async function currentVersion() {
   try {
-    return (await readFile('/var/lib/arsy/deployed-sha', 'utf8')).trim();
+    return (await readFile(env.ARSY_DEPLOYED_SHA_FILE || '/var/lib/arsy/deployed-sha', 'utf8')).trim();
   } catch {
     return 'unversioned';
   }
@@ -386,10 +421,11 @@ app.get('/login', async (_request, reply) => {
 });
 
 app.get('/dashboard', { preHandler: requirePageAuth }, async (request, reply) => {
-  const onboarding = await pool.query('SELECT onboarding_complete FROM arsy_installation_profile WHERE id = 1');
+  const onboarding = await pool.query('SELECT profile, onboarding_complete FROM arsy_installation_profile WHERE id = 1');
   if (!onboarding.rows[0]?.onboarding_complete) return reply.redirect('/onboarding');
+  const domainState = await readDomainState();
   return reply.type('text/html; charset=utf-8').send(
-    dashboardPage(request.arsySession.user, request.arsySession.csrfToken)
+    dashboardPage(request.arsySession.user, request.arsySession.csrfToken, onboarding.rows[0]?.profile || {}, domainState)
   );
 });
 
@@ -456,7 +492,7 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   const clean = (v, max = 100) => String(v || '').trim().slice(0, max);
   const workspaceName = clean(b.workspaceName), installationName = clean(b.installationName), nodeName = clean(b.nodeName);
   const contactEmail = normalizeEmail(b.contactEmail);
-  const environment = clean(b.environment, 20), timezone = clean(b.timezone, 64), language = clean(b.language, 2);
+  const environment = clean(b.environment, 20), timezone = clean(b.timezone, 64) || 'Asia/Jakarta', language = clean(b.language, 2);
   const accessMode = clean(b.accessMode, 20), hostname = clean(b.hostname, 253).toLowerCase();
   const targetIpv4 = clean(b.targetIpv4, 45), proxyType = clean(b.proxyType, 20);
   if (workspaceName.length < 2 || installationName.length < 2 || nodeName.length < 2 || !contactEmail) {
@@ -464,6 +500,9 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   }
   if (!['personal','lab','staging','production'].includes(environment) || !['id','en'].includes(language) || !['private','public','proxy'].includes(accessMode)) {
     return reply.code(400).send({ ok: false, error: 'Pilihan konfigurasi tidak valid.' });
+  }
+  if (!isValidTimeZone(timezone)) {
+    return reply.code(400).send({ ok: false, error: 'Timezone tidak dikenal. Gunakan nama IANA seperti Asia/Jakarta atau UTC.' });
   }
   if (accessMode !== 'private' && (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname))) {
     return reply.code(400).send({ ok: false, error: 'Masukkan hostname lengkap, contoh panel.example.com (tanpa https:// atau path).' });
@@ -492,7 +531,19 @@ app.post('/api/onboarding/dns-check', { preHandler: requireApiAuth }, async (req
   try { a = await resolve4(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
   try { aaaa = await resolve6(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
   const expected = String(request.body?.targetIpv4 || '').trim();
-  return reply.send({ ok: true, hostname, a, aaaa, expectedIpv4: expected || null, matches: expected ? a.includes(expected) : null, message: a.length || aaaa.length ? 'DNS record ditemukan.' : 'Belum ada A/AAAA record yang terlihat.' });
+  const diagnostic = {
+    hostname, a, aaaa, expectedIpv4: expected || null,
+    matches: expected ? a.includes(expected) : null,
+    checkedAt: new Date().toISOString()
+  };
+  await pool.query(
+    "UPDATE arsy_installation_profile SET profile = jsonb_set(profile, '{dnsCheck}', $1::jsonb, true), updated_at = NOW() WHERE id = 1",
+    [JSON.stringify(diagnostic)]
+  );
+  return reply.send({
+    ok: true, ...diagnostic,
+    message: a.length || aaaa.length ? 'DNS record ditemukan.' : 'Belum ada A/AAAA record yang terlihat.'
+  });
 });
 
 app.post('/api/login', async (request, reply) => {
