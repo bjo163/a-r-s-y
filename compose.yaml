@@ -1,6 +1,72 @@
 name: arsy-core
 
 services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arsy}
+      POSTGRES_USER: ${POSTGRES_USER:-arsy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - arsy_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arsy} -d ${POSTGRES_DB:-arsy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: .
+      dockerfile: apps/control-plane/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-arsy}
+      DB_USER: ${POSTGRES_USER:-arsy}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      ARSY_SETUP_TOKEN: ${ARSY_SETUP_TOKEN:?ARSY_SETUP_TOKEN is required}
+      ARSY_SESSION_SECRET: ${ARSY_SESSION_SECRET:?ARSY_SESSION_SECRET is required}
+      ARSY_COOKIE_SECURE: ${ARSY_COOKIE_SECURE:-false}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - /var/lib/arsy:/var/lib/arsy:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 200
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   gateway:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -8,9 +74,11 @@ services:
       - "${ARSY_HTTP_BIND:-127.0.0.1}:${ARSY_HTTP_PORT:-18080}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./site:/srv:ro
       - caddy_data:/data
       - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp:size=16m,noexec,nosuid,nodev
@@ -33,5 +101,6 @@ services:
         max-file: "3"
 
 volumes:
+  arsy_postgres:
   caddy_data:
   caddy_config:

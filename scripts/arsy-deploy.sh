@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
+APP_DIR="/opt/arsy"
 LOG_DIR="/var/log/arsy"
 LOCK_FILE="/run/lock/arsy-deploy.lock"
 TARGET_SHA="${1:-}"
@@ -15,75 +15,103 @@ die() { log "ERROR: $*" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || die "Docker is not installed."
 command -v curl >/dev/null 2>&1 || die "curl is not installed."
 command -v flock >/dev/null 2>&1 || die "flock is not installed."
+command -v openssl >/dev/null 2>&1 || die "openssl is not installed."
 
-install -d -m 0750 "$LOG_DIR" /run/lock
+install -d -m 0750 "$LOG_DIR" /var/lib/arsy /run/lock
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another deployment is already running."
 exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
 
 cd "$APP_DIR"
-[[ -f .env && -f compose.yaml ]] || die "Missing .env or compose.yaml."
+[[ -f .env ]] || die "Missing $APP_DIR/.env."
+chmod 0600 .env
 OLD_SHA="$(cat /var/lib/arsy/deployed-sha 2>/dev/null || true)"
 
-log "Fetching main and release tags."
-git fetch --prune --tags origin '+refs/heads/main:refs/remotes/origin/main'
-git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null || die "Target commit $TARGET_SHA is not present after fetch."
+ensure_env() {
+  local key="$1" value="$2"
+  if ! grep -qE "^\${key}=" .env; then
+    printf '%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+
+ensure_env ARSY_HTTP_BIND "127.0.0.1"
+ensure_env ARSY_HTTP_PORT "18080"
+ensure_env TZ "Asia/Jakarta"
+ensure_env POSTGRES_DB "arsy"
+ensure_env POSTGRES_USER "arsy"
+ensure_env POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
+ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
+ensure_env ARSY_COOKIE_SECURE "false"
+
+log "Fetching approved source revision."
+git fetch --prune origin main
+git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null || die "Target commit is not available."
+git checkout --detach "$TARGET_SHA"
+git reset --hard "$TARGET_SHA"
+
+compose() {
+  docker compose --env-file .env -f compose.yaml "$@"
+}
+
+compose_up() {
+  compose config --quiet
+  if compose config --services | grep -qx 'app'; then
+    compose build --pull app
+  fi
+  compose up -d --remove-orphans
+}
 
 rollback() {
   local reason="$1"
   log "Deployment failed: $reason"
   if [[ -n "$OLD_SHA" ]] && git cat-file -e "${OLD_SHA}^{commit}" 2>/dev/null; then
-    log "Rolling back source and Compose stack to $OLD_SHA."
+    log "Restoring previous source revision $OLD_SHA."
     git checkout --detach "$OLD_SHA"
     git reset --hard "$OLD_SHA"
-    if docker compose --env-file .env -f compose.yaml config --quiet && docker compose --env-file .env -f compose.yaml up -d --remove-orphans; then
-      log "Rollback stack started."
+    if compose_up; then
+      log "Previous stack restored. Database migrations are additive and must remain backward-compatible."
     else
-      log "CRITICAL: rollback stack could not be started; inspect docker compose logs."
+      log "CRITICAL: rollback failed. Inspect Docker Compose logs and preserve the database volume."
     fi
   else
-    log "No previous commit exists; the initial deployment cannot be rolled back."
+    log "No previous deployment is recorded. Initial deployment requires manual repair if it fails."
+    compose down --remove-orphans || true
   fi
   exit 1
 }
 
-log "Checking out target commit $TARGET_SHA."
-git checkout --detach "$TARGET_SHA"
-git reset --hard "$TARGET_SHA"
+log "Pulling gateway and database images."
+compose pull gateway || rollback "Gateway image pull failed."
+if compose config --services | grep -qx 'db'; then
+  compose pull db || rollback "PostgreSQL image pull failed."
+fi
 
-docker compose --env-file .env -f compose.yaml config --quiet || rollback "Compose configuration is invalid."
-docker compose --env-file .env -f compose.yaml pull || rollback "Image pull failed."
-docker compose --env-file .env -f compose.yaml up -d --remove-orphans || rollback "Compose startup failed."
+log "Building application and starting services."
+compose_up || rollback "Compose deployment failed."
 
 HTTP_PORT="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1 | tr -d '\r')"
 HTTP_PORT="${HTTP_PORT:-18080}"
-[[ "$HTTP_PORT" =~ ^[0-9]{1,5}$ ]] && (( HTTP_PORT >= 1 && HTTP_PORT <= 65535 )) || rollback "ARSY_HTTP_PORT in .env is invalid."
+[[ "$HTTP_PORT" =~ ^[0-9]{1,5}$ ]] && (( HTTP_PORT >= 1 && HTTP_PORT <= 65535 )) || rollback "ARSY_HTTP_PORT is invalid."
+
 HEALTH_URL="http://127.0.0.1:${HTTP_PORT}/healthz"
 healthy=0
-for attempt in $(seq 1 45); do
-  if curl -fsS --connect-timeout 2 --max-time 4 "$HEALTH_URL" >/dev/null 2>&1; then
+for attempt in $(seq 1 60); do
+  if curl -fsS --connect-timeout 2 --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then
     healthy=1
     break
   fi
   sleep 2
 done
-[[ "$healthy" -eq 1 ]] || rollback "Health check did not pass at $HEALTH_URL."
+[[ "$healthy" -eq 1 ]] || rollback "Health check failed at $HEALTH_URL."
 
-printf '%s\n' "$TARGET_SHA" > /var/lib/arsy-deployed-sha.tmp
-install -m 0640 -o root -g root /var/lib/arsy-deployed-sha.tmp /var/lib/arsy/deployed-sha
-rm -f /var/lib/arsy-deployed-sha.tmp
+printf '%s\n' "$TARGET_SHA" > /var/lib/arsy/deployed-sha.tmp
+install -m 0640 -o root -g root /var/lib/arsy/deployed-sha.tmp /var/lib/arsy/deployed-sha
+rm -f /var/lib/arsy/deployed-sha.tmp
 
-# Refresh privileged entrypoints only after the new release is healthy.
-if [[ -f scripts/arsy-deploy.sh ]]; then
-  install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
-fi
-if [[ -f scripts/arsy-update.sh ]]; then
-  install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
-fi
-
-printf '{ "current_sha": "%s", "deployed_at": "%s" }\n' "$TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.json.tmp
-install -m 0644 site/version.json.tmp site/version.json
-rm -f site/version.json.tmp
+install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
+install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
+install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
-docker compose --env-file .env -f compose.yaml ps
+compose ps

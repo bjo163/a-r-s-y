@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
+APP_DIR="/opt/arsy"
 DEPLOY_BIN="/usr/local/sbin/arsy-deploy"
 
 log() { printf '[ARSY-UPDATE] %s\n' "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
-[[ "$EUID" -eq 0 ]] || die "Run with sudo: sudo arsy-update"
+[[ "$EUID" -eq 0 ]] || die "Run with sudo: sudo arsy-update [--yes]"
 [[ -d "$APP_DIR/.git" ]] || die "A-R-S-Y repository not found at $APP_DIR."
 [[ -x "$DEPLOY_BIN" ]] || die "Deployment runner not installed. Re-run install.sh."
 command -v git >/dev/null 2>&1 || die "git is required."
@@ -30,7 +30,7 @@ printf '\n'
 
 case "${1:-}" in
   --yes)
-    log "Applying update already approved by the application."
+    log "Applying update already approved in the A-R-S-Y app."
     exec "$DEPLOY_BIN" "$LATEST_SHA"
     ;;
   "")

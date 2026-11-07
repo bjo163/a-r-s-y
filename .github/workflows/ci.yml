@@ -20,7 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate shell syntax
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install and test control plane
+        working-directory: apps/control-plane
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          node --check src/server.js
+
+      - name: Validate shell scripts
         shell: bash
         run: |
           set -euo pipefail
@@ -28,15 +40,3 @@ jobs:
           bash -n scripts/arsy-deploy.sh
           bash -n scripts/arsy-update.sh
           bash -n scripts/arsy-doctor.sh
-
-      - name: Check required repository files
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s README.md
-          test -s compose.yaml
-          test -s Caddyfile
-          test -s docs/00-narrative-and-positioning.md
-          test -s docs/02-master-blueprint.md
-          test -s docs/UPDATE_POLICY.md
-          test -s site/index.html

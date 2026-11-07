@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+APP_DIR="/opt/arsy"
 REPO_URL="https://github.com/bjo163/a-r-s-y.git"
-APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
 
 log() { printf '\n[ARSY] %s\n' "$*"; }
 die() { printf '\n[ARSY][ERROR] %s\n' "$*" >&2; exit 1; }
-
 [[ "$EUID" -eq 0 ]] || die "Run with sudo: sudo bash install.sh"
 [[ -f /etc/os-release ]] || die "/etc/os-release not found."
 . /etc/os-release
@@ -25,9 +24,15 @@ case "${ID:-}" in
     ;;
 esac
 
+if [[ -f /var/lib/arsy/deployed-sha ]]; then
+  log "A-R-S-Y is already installed."
+  log "Use 'sudo arsy-update' to check for an update. Nothing has been changed."
+  exit 0
+fi
+
 log "Installing basic tools."
 apt-get update
-apt-get install -y ca-certificates curl git
+apt-get install -y ca-certificates curl git openssl
 
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   log "Installing Docker Engine and Compose from the official Docker repository."
@@ -50,14 +55,9 @@ docker info >/dev/null 2>&1 || die "Docker daemon is not responding."
 docker compose version >/dev/null 2>&1 || die "Docker Compose plugin is not available."
 
 if [[ -d "$APP_DIR/.git" ]]; then
-  if [[ -s /var/lib/arsy/deployed-sha ]]; then
-    log "A-R-S-Y is already installed. The installer will not update it automatically."
-    log "Use the consent-based update command instead: sudo arsy-update"
-    exit 0
-  fi
-  log "Existing pre-alpha checkout found. Preserving .env and local data."
+  log "Using existing A-R-S-Y checkout at $APP_DIR."
 elif [[ -e "$APP_DIR" && -n "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
-  die "$APP_DIR exists and is not an A-R-S-Y checkout. Move it or set ARSY_APP_DIR."
+  die "$APP_DIR exists and is not an A-R-S-Y checkout. Move it before installing."
 else
   install -d -m 0755 "$(dirname "$APP_DIR")"
   log "Cloning A-R-S-Y."
@@ -65,40 +65,58 @@ else
 fi
 
 cd "$APP_DIR"
-[[ -f compose.yaml && -f .env.example && -f scripts/arsy-deploy.sh && -f scripts/arsy-update.sh ]] || die "Required A-R-S-Y files are missing."
+git fetch --quiet origin main
+TARGET_SHA="$(git rev-parse refs/remotes/origin/main)"
+git checkout --detach "$TARGET_SHA"
 
-if [[ ! -f .env ]]; then
-  printf 'ARSY_HTTP_BIND=%s\nARSY_HTTP_PORT=%s\nTZ=%s\n' \
-    "${ARSY_HTTP_BIND:-127.0.0.1}" "${ARSY_HTTP_PORT:-18080}" "${TZ:-Asia/Jakarta}" > .env
-  chmod 0600 .env
-else
-  chmod 0600 .env
-  log "Keeping existing .env unchanged."
-fi
+ensure_env() {
+  local key="$1" value="$2"
+  if ! grep -qE "^\${key}=" .env 2>/dev/null; then
+    printf '%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+
+touch .env
+ensure_env ARSY_HTTP_BIND "127.0.0.1"
+ensure_env ARSY_HTTP_PORT "18080"
+ensure_env TZ "Asia/Jakarta"
+ensure_env POSTGRES_DB "arsy"
+ensure_env POSTGRES_USER "arsy"
+ensure_env POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
+ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
+ensure_env ARSY_COOKIE_SECURE "false"
+chmod 0600 .env
 
 install -d -m 0750 /var/log/arsy /var/lib/arsy
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
+install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 
-git fetch --quiet origin main --tags
-TARGET_SHA="$(git rev-parse refs/remotes/origin/main)"
-log "Installing initial version ${TARGET_SHA:0:12}."
+log "Installing A-R-S-Y Core and database. This may take a few minutes."
 /usr/local/sbin/arsy-deploy "$TARGET_SHA"
 
 PORT="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1)"
 PORT="${PORT:-18080}"
+SETUP_TOKEN="$(sed -n 's/^ARSY_SETUP_TOKEN=//p' .env | tail -n1)"
+
 cat <<OUT
 
-A-R-S-Y Core Node installed.
+A-R-S-Y is installed.
 
-  App directory : $APP_DIR
-  Local portal  : http://127.0.0.1:$PORT/
-  Health check  : http://127.0.0.1:$PORT/healthz
+  Web              http://127.0.0.1:$PORT
+  Health           http://127.0.0.1:$PORT/healthz
+  Setup            http://127.0.0.1:$PORT/setup
+  App directory    $APP_DIR
 
-Updates are NEVER installed automatically.
-Check and approve an update with:
+FIRST SUPERADMIN SETUP KEY (save it):
+$SETUP_TOKEN
 
+Open the web app through an SSH tunnel, create the first Superadmin, and keep
+the setup key private. After setup, initial enrollment is permanently closed.
+
+Check updates any time:
   sudo arsy-update
 
-The web application will later show an update notification and ask for your approval.
+Updates are detected first and require your approval.
 OUT
