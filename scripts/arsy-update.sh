@@ -27,13 +27,25 @@ log "An update is available."
 printf '  Current: %s\n  Latest : %s\n' "$CURRENT_SHA" "$LATEST_SHA"
 git --no-pager log -1 --format='  Changes: %s (%h)' "$LATEST_SHA"
 printf '\n'
-read -r -p "Do you want to update A-R-S-Y now? [y/N] " answer
-case "$answer" in
-  y|Y|yes|YES)
+
+case "${1:-}" in
+  --yes)
+    log "Applying update already approved by the application."
     exec "$DEPLOY_BIN" "$LATEST_SHA"
     ;;
+  "")
+    read -r -p "Do you want to update A-R-S-Y now? [y/N] " answer
+    case "$answer" in
+      y|Y|yes|YES)
+        exec "$DEPLOY_BIN" "$LATEST_SHA"
+        ;;
+      *)
+        log "Update skipped. Nothing has been changed."
+        exit 0
+        ;;
+    esac
+    ;;
   *)
-    log "Update skipped. Nothing has been changed."
-    exit 0
+    die "Usage: sudo arsy-update [--yes]"
     ;;
 esac
