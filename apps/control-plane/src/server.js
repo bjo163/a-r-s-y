@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import pg from 'pg';
-import { readFile, readFileSync } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -236,10 +236,7 @@ async function getSession(request) {
 
 async function requirePageAuth(request, reply) {
   const session = await getSession(request);
-  if (!session) {
-    reply.redirect('/login');
-    return;
-  }
+  if (!session) return reply.redirect('/login');
   request.arsySession = session;
 }
 
