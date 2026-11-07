@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import pg from 'pg';
 import { readFile } from 'node:fs/promises';
+import { resolve4, resolve6 } from 'node:dns/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -136,6 +137,39 @@ function dashboardPage(user, csrf) {
     '<article class="info-card"><div class="eyebrow">NEXT STEP</div><h3>Configure your first services</h3><p>Core foundation is running. DNS, edge, tunnel, storage and compute will be enabled in later milestones.</p></article></div>' +
     '<p class="dashboard-version">A-R-S-Y FOUNDATION · ONE COMMAND PLANE. OPEN BY DESIGN.</p></section></main>';
   return page('Command center', body, csrf);
+}
+
+
+function onboardingPage(user, csrf, profile = {}) {
+  const val = (key, fallback = '') => escapeHtml(profile[key] || fallback);
+  const mode = profile.accessMode || 'private';
+  return page('Installation onboarding',
+    '<main class="wizard-wrap"><div class="eyebrow">FIRST RUN / INSTALLATION WIZARD</div>' +
+    '<h1>Make this node<br><em>yours.</em></h1><p class="lead">Lengkapi identitas instalasi dan akses panel. Progress tersimpan dan bisa dilanjutkan kapan saja.</p>' +
+    '<div class="wizard-steps"><span>01 Identity</span><span>02 Node</span><span>03 Network</span><span>04 Review</span></div>' +
+    '<form id="onboarding-form" class="panel wizard-form">' +
+    '<div class="wizard-section"><div class="panel-kicker">01 / WORKSPACE</div><h2>Who owns this installation?</h2>' +
+    '<label>Workspace / organization<input name="workspaceName" required minlength="2" maxlength="100" value="' + val('workspaceName','My Workspace') + '"></label>' +
+    '<label>Operational contact email<input name="contactEmail" type="email" maxlength="254" value="' + val('contactEmail', user.email) + '"></label>' +
+    '<label>Installation name<input name="installationName" required minlength="2" maxlength="100" value="' + val('installationName','A-R-S-Y Primary') + '"></label>' +
+    '<div class="form-grid"><label>Environment<select name="environment"><option value="personal">Personal</option><option value="lab">Lab</option><option value="staging">Staging</option><option value="production">Production</option></select></label>' +
+    '<label>Timezone<input name="timezone" maxlength="64" value="' + val('timezone','Asia/Jakarta') + '"></label>' +
+    '<label>Panel language<select name="language"><option value="id">Bahasa Indonesia</option><option value="en">English</option></select></label></div></div>' +
+    '<div class="wizard-section"><div class="panel-kicker">02 / CORE NODE</div><h2>Identify this server.</h2>' +
+    '<label>Node display name<input name="nodeName" required minlength="2" maxlength="100" value="' + val('nodeName','Core Node 01') + '"></label>' +
+    '<p class="muted">OS, CPU, RAM, disk, Docker, dan hostname host akan ditampilkan dari pemeriksaan installer/doctor. Belum ada data host yang dikirim otomatis oleh browser.</p></div>' +
+    '<div class="wizard-section"><div class="panel-kicker">03 / NETWORK & DOMAIN</div><h2>How will you access A-R-S-Y?</h2>' +
+    '<label>Access mode<select name="accessMode" id="access-mode"><option value="private"' + (mode==='private'?' selected':'') + '>Private — SSH tunnel (recommended)</option><option value="public"' + (mode==='public'?' selected':'') + '>Public domain — A-R-S-Y managed gateway</option><option value="proxy"' + (mode==='proxy'?' selected':'') + '>Existing reverse proxy</option></select></label>' +
+    '<div id="domain-fields"><label>Control panel hostname<input name="hostname" placeholder="panel.example.com" value="' + val('hostname') + '"></label>' +
+    '<div class="form-grid"><label>VPS public IPv4 (A record target)<input name="targetIpv4" placeholder="203.0.113.10" value="' + val('targetIpv4') + '"></label>' +
+    '<label>Existing proxy type<select name="proxyType"><option value="">Select if applicable</option><option>Nginx</option><option>Caddy</option><option>Traefik</option><option>Other</option></select></label></div>' +
+    '<label class="check-label"><input type="checkbox" name="proxyTls" value="true"' + (profile.proxyTls?' checked':'') + '> Existing proxy already terminates valid HTTPS</label>' +
+    '<p class="muted">Public mode requires DNS pointing to this VPS and inbound TCP 80/443. Existing-proxy mode keeps A-R-S-Y on loopback. No firewall, DNS, or proxy changes are made by saving this form.</p>' +
+    '<button class="button button-quiet" id="dns-check" type="button">Check DNS records</button><div id="dns-result" class="form-message" role="status"></div></div></div>' +
+    '<div class="wizard-section"><div class="panel-kicker">04 / REVIEW</div><h2>Save your installation profile.</h2>' +
+    '<p class="muted">Saving records your choices only. Applying a public domain, opening ports, and requesting TLS will require a separate reviewed host operation. Private SSH access remains the recovery path.</p>' +
+    '<div class="form-message" id="wizard-message" role="status"></div><button class="button button-primary" type="submit">Save & finish setup <span>↗</span></button></div>' +
+    '</form></main>', csrf);
 }
 
 function cookieValue(header, name) {
@@ -400,7 +434,58 @@ app.post('/api/setup', async (request, reply) => {
 
   const session = await createSession(user.id);
   setSessionCookie(reply, session.token);
-  return reply.send({ ok: true, redirect: '/dashboard', message: 'Superadmin berhasil dibuat.' });
+  return reply.send({ ok: true, redirect: '/onboarding', message: 'Superadmin berhasil dibuat.' });
+});
+
+
+app.get('/onboarding', { preHandler: requirePageAuth }, async (request, reply) => {
+  const result = await pool.query('SELECT profile FROM arsy_installation_profile WHERE id = 1');
+  return reply.type('text/html; charset=utf-8').send(onboardingPage(request.arsySession.user, request.arsySession.csrfToken, result.rows[0]?.profile || {}));
+});
+
+app.get('/api/onboarding/profile', { preHandler: requireApiAuth }, async (_request, reply) => {
+  const result = await pool.query('SELECT profile, onboarding_complete FROM arsy_installation_profile WHERE id = 1');
+  return reply.send({ ok: true, profile: result.rows[0]?.profile || {}, complete: result.rows[0]?.onboarding_complete || false });
+});
+
+app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (request, reply) => {
+  if (!requireCsrf(request, reply)) return;
+  const b = request.body || {};
+  const clean = (v, max = 100) => String(v || '').trim().slice(0, max);
+  const workspaceName = clean(b.workspaceName), installationName = clean(b.installationName), nodeName = clean(b.nodeName);
+  const contactEmail = normalizeEmail(b.contactEmail);
+  const environment = clean(b.environment, 20), timezone = clean(b.timezone, 64), language = clean(b.language, 2);
+  const accessMode = clean(b.accessMode, 20), hostname = clean(b.hostname, 253).toLowerCase();
+  const targetIpv4 = clean(b.targetIpv4, 45), proxyType = clean(b.proxyType, 20);
+  if (workspaceName.length < 2 || installationName.length < 2 || nodeName.length < 2 || !contactEmail) {
+    return reply.code(400).send({ ok: false, error: 'Workspace, installation, node, dan email kontak wajib valid.' });
+  }
+  if (!['personal','lab','staging','production'].includes(environment) || !['id','en'].includes(language) || !['private','public','proxy'].includes(accessMode)) {
+    return reply.code(400).send({ ok: false, error: 'Pilihan konfigurasi tidak valid.' });
+  }
+  if (accessMode !== 'private' && (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname))) {
+    return reply.code(400).send({ ok: false, error: 'Masukkan hostname lengkap, contoh panel.example.com (tanpa https:// atau path).' });
+  }
+  if (targetIpv4 && !/^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$/.test(targetIpv4)) {
+    return reply.code(400).send({ ok: false, error: 'Alamat IPv4 tidak valid.' });
+  }
+  const profile = { workspaceName, contactEmail, installationName, environment, timezone, language, nodeName, accessMode, hostname: accessMode==='private'?'':hostname, targetIpv4, proxyType, proxyTls: b.proxyTls === true || b.proxyTls === 'true' };
+  await pool.query('UPDATE arsy_installation_profile SET profile=$1::jsonb, onboarding_complete=TRUE, updated_at=NOW() WHERE id=1', [JSON.stringify(profile)]);
+  await recordAudit(request.arsySession.user.id, 'onboarding.completed', request, { accessMode, environment, hostname: profile.hostname || null });
+  return reply.send({ ok: true, redirect: '/dashboard', message: 'Profil instalasi tersimpan.' });
+});
+
+app.post('/api/onboarding/dns-check', { preHandler: requireApiAuth }, async (request, reply) => {
+  if (!requireCsrf(request, reply)) return;
+  const hostname = String(request.body?.hostname || '').trim().toLowerCase();
+  if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname)) {
+    return reply.code(400).send({ ok: false, error: 'Hostname tidak valid.' });
+  }
+  let a = [], aaaa = [];
+  try { a = await resolve4(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
+  try { aaaa = await resolve6(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
+  const expected = String(request.body?.targetIpv4 || '').trim();
+  return reply.send({ ok: true, hostname, a, aaaa, expectedIpv4: expected || null, matches: expected ? a.includes(expected) : null, message: a.length || aaaa.length ? 'DNS record ditemukan.' : 'Belum ada A/AAAA record yang terlihat.' });
 });
 
 app.post('/api/login', async (request, reply) => {
