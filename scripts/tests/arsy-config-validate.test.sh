@@ -31,4 +31,7 @@ bad_port="$TMP/bad-port.env"; write_valid "$bad_port"; sed -i 's/^ARSY_PUBLIC_HT
 bad_bind="$TMP/bad-bind.env"; write_valid "$bad_bind"; sed -i 's/^ARSY_PUBLIC_HTTP_BIND=.*/ARSY_PUBLIC_HTTP_BIND=192.0.2.10/' "$bad_bind"; expect_fail "invalid bind" "$bad_bind"
 duplicate_port="$TMP/duplicate-port.env"; write_valid "$duplicate_port"; sed -i 's/^ARSY_PROXY_HTTP_PORT=.*/ARSY_PROXY_HTTP_PORT=18080/' "$duplicate_port"; expect_fail "duplicate port" "$duplicate_port"
 bad_db="$TMP/bad-db.env"; write_valid "$bad_db"; sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=arsy;drop/' "$bad_db"; expect_fail "unsafe DB identifier" "$bad_db"
-printf '[PASS] config validator rejects empty/duplicate keys, invalid ports/binds and unsafe database identifiers.\n'
+for target in "$ROOT/install.sh" "$ROOT/scripts/arsy-deploy.sh"; do
+  grep -Fq 'ensure_env ARSY_ENV_LAYOUT_VERSION "2"' "$target" || fail "layout version default missing from $target"
+done
+printf '[PASS] config validator rejects invalid environment values and install/deploy seed layout version 2.\n'
