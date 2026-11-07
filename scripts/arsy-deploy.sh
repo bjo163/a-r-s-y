@@ -36,6 +36,27 @@ cd "$APP_DIR"
 [[ -f .env ]] || die "Missing $APP_DIR/.env."
 chmod 0600 .env
 
+# Preserve operator-owned environment across migration and a failed deployment.
+ENV_BACKUP="$(mktemp "$APP_DIR/.env.deploy-backup.XXXXXX")"
+cp -p .env "$ENV_BACKUP"
+cleanup_env_backup() {
+  local status="$?"
+  trap - EXIT
+  if (( status != 0 )) && [[ -f "$ENV_BACKUP" ]]; then
+    if cp -p "$ENV_BACKUP" "$APP_DIR/.env.restore.tmp"; then
+      chmod 0600 "$APP_DIR/.env.restore.tmp"
+      mv -f "$APP_DIR/.env.restore.tmp" "$APP_DIR/.env"
+      log "Original .env restored after deployment failure."
+    else
+      log "CRITICAL: .env backup retained at $ENV_BACKUP; manual recovery is required."
+      exit "$status"
+    fi
+  fi
+  rm -f -- "$ENV_BACKUP"
+  exit "$status"
+}
+trap cleanup_env_backup EXIT
+
 # Runtime gateway configuration must survive Git checkouts and updates.
 install -d -m 0755 "$STATE_DIR"
 if [[ ! -f "$STATE_DIR/Caddyfile" ]]; then
@@ -72,7 +93,7 @@ git checkout --detach "$TARGET_SHA"
 git reset --hard "$TARGET_SHA"
 # Run the migration from the approved target tree so existing installations
 # without this helper can safely transition before the new Compose mapping.
-bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"
+# Environment migration runs after rollback handlers are defined.
 
 compose() {
   docker compose --env-file .env -f compose.yaml "$@"
@@ -104,9 +125,17 @@ wait_for_health() {
   [[ "$healthy" -eq 1 ]]
 }
 
+restore_env_backup() {
+  [[ -f "$ENV_BACKUP" ]] || return 0
+  cp -p "$ENV_BACKUP" "$APP_DIR/.env.restore.tmp"
+  chmod 0600 "$APP_DIR/.env.restore.tmp"
+  mv -f "$APP_DIR/.env.restore.tmp" "$APP_DIR/.env"
+}
+
 rollback() {
   local reason="$1"
   log "Deployment failed: $reason"
+  restore_env_backup || log "CRITICAL: could not restore the original .env; backup retained at $ENV_BACKUP."
   if [[ -n "$OLD_SHA" ]] && git cat-file -e "${OLD_SHA}^{commit}" 2>/dev/null; then
     log "Restoring previous source revision $OLD_SHA."
     git checkout --detach "$OLD_SHA"
@@ -122,6 +151,12 @@ rollback() {
   fi
   exit 1
 }
+
+# Migrate only after the rollback path exists. Any partial migration or later
+# deployment failure restores the exact pre-deployment .env backup.
+if ! bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"; then
+  rollback "Environment migration failed."
+fi
 
 log "Pulling gateway and database images."
 compose pull gateway || rollback "Gateway image pull failed."

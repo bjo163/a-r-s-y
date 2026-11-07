@@ -95,6 +95,30 @@ cmp -s "$dir/state/Caddyfile" "$dir/caddy.before" || fail "runtime Caddyfile cha
 grep -q 'Previous stack restored and health-checked' "$dir/output.log" || fail "rollback health evidence missing"
 if grep -q 'down .*-[vV]' "$dir/docker.log"; then fail "persistent volumes must never be removed"; fi
 
+make_case legacy-migration-rollback
+dir="$TMP/legacy-migration-rollback"
+cat > "$dir/app/.env" <<'ENV'
+ARSY_HTTP_BIND=0.0.0.0
+ARSY_HTTP_PORT=80
+ARSY_HTTPS_BIND=0.0.0.0
+ARSY_HTTPS_PORT=443
+POSTGRES_DB=arsy
+POSTGRES_USER=arsy
+POSTGRES_PASSWORD=preserve-this-db-password
+ARSY_SETUP_TOKEN=preserve-this-bootstrap-token
+ARSY_SESSION_SECRET=preserve-this-session-secret
+ARSY_COOKIE_SECURE=false
+TZ=Asia/Jakarta
+ENV
+chmod 0600 "$dir/app/.env"
+cp "$dir/app/.env" "$dir/env.before"
+cp "$dir/state/Caddyfile" "$dir/caddy.before"
+if run_deploy "$dir" "MOCK_FAIL_FIRST_UP=1" > "$dir/output.log" 2>&1; then fail "legacy Compose failure should fail the deployment"; fi
+cmp -s "$dir/app/.env" "$dir/env.before" || fail "legacy .env migration was not fully rolled back"
+cmp -s "$dir/state/Caddyfile" "$dir/caddy.before" || fail "legacy rollback changed runtime Caddyfile"
+[[ "$(cat "$dir/state/deployed-sha")" == "$OLD_SHA" ]] || fail "legacy rollback changed deployed SHA"
+grep -q 'Original .env restored' "$dir/output.log" || fail "legacy environment rollback was not logged"
+
 make_case health-failure
 dir="$TMP/health-failure"
 if run_deploy "$dir" "MOCK_FAIL_HEALTH_ONCE=1" > "$dir/output.log" 2>&1; then fail "first health check failure should fail the deployment"; fi
