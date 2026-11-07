@@ -1,60 +1,74 @@
-# A-R-S-Y — Roadmap
+# A-R-S-Y — Roadmap and Execution Gates
 
-## M0 — Foundation and governance
+This roadmap tracks actual delivery, not aspirations. A checked item must exist in code/docs and have evidence. A merged commit is not equivalent to a tested feature.
+
+## M0 — Product foundation and governance
 
 - [x] Product narrative and MoonWitness relationship.
 - [x] Brand system and initial SVG concepts.
-- [x] Single-VPS architecture and security boundaries.
+- [x] Single-VPS-first architecture and explicit non-goals.
 - [x] Docker Compose foundation and installer.
-- [x] Consent-based update detection and approval.
-- [x] GitHub CI without automatic VPS deployment.
+- [x] Consent-first update detection and exact-SHA approval flow.
+- [x] GitHub CI workflow (workflow exists; execution is not yet verified green).
 - [x] Fastify web console and health endpoint.
 - [x] One-time first Superadmin onboarding.
-- [x] Login, PostgreSQL-backed sessions, logout, and audit events.
-- [ ] VPS installation and live browser verification.
-- [ ] Encrypted off-site backup and restore drill.
+- [x] Login/logout, PostgreSQL-backed sessions, and audit events.
+- [x] Installation profile wizard and DNS diagnostic endpoint.
+- [x] Private SSH tunnel, managed-domain helper, and existing-proxy guidance.
+- [ ] CI consistently completes successfully on current main.
+- [ ] Fresh install and repair tested on real supported VPS.
+- [ ] Managed domain HTTPS, private recovery, failure rollback tested on real VPS.
+- [ ] Encrypted off-site backup and successful restore drill.
+- [ ] Security review and release readiness checklist.
 
-## M1 — ARSY Core alpha
+**M0 exit:** all first-VPS Definition-of-Done items in `docs/LOCAL_AI_HANDOFF.md` have evidence.
 
-- [x] Initial Superadmin identity.
-- [x] Single-VPS operator dashboard.
-- [ ] Organization and project management.
-- [ ] Tenant-scoped RBAC and API keys.
+## M1 — ARSY Core alpha (after M0)
+
+- [ ] Confirm tenant model and threat model.
+- [ ] Organization/workspace model and membership lifecycle.
+- [ ] Project and environment management.
+- [ ] Tenant-scoped RBAC and negative cross-tenant tests.
+- [ ] Scoped, revocable API keys.
 - [ ] Resource registry and service catalog.
-- [ ] Authenticated host update agent for app-approved updates.
-- [ ] OpenAPI contract and provisioning jobs.
+- [ ] OpenAPI/JSON Schema contract and CI validation.
+- [ ] Idempotent provisioning request model and durable job lifecycle.
+- [ ] Authenticated update/host agent design only after least-privilege boundary is reviewed.
 
 ## M2 — Operations baseline
 
-- [ ] Prometheus/Grafana monitoring and alerting.
-- [ ] Encrypted off-site backup and successful restore drill.
-- [ ] Host hardening and private admin access.
-- [ ] Incident, rollback, and recovery runbooks.
+- [ ] Monitoring, metrics, dashboards, and actionable alerts.
+- [ ] Encrypted off-site backup and tested restore automation.
+- [ ] Host hardening guide without silent host mutation.
+- [ ] Incident, rollback, disaster-recovery, and support runbooks.
+- [ ] SBOM, dependency/image scanning, license inventory, vulnerability disclosure.
 
-## M3 — ARSY Name
+## M3 — ARSY Name (DNS)
 
 - [ ] PowerDNS adapter and zone lifecycle API.
-- [ ] Domain ownership verification and DNSSEC.
-- [ ] Independent secondary nameserver topology before public delegation.
+- [ ] Domain ownership verification and DNSSEC workflow.
+- [ ] Independent secondary nameserver topology and failure domains before public delegation.
+- [ ] Abuse, rate, quota, and audit controls.
 
 ## M4 — ARSY Edge + Shield
 
-- [ ] Caddy route provisioning and configuration versioning.
-- [ ] Envoy + Coraza + OWASP CRS evaluation and false-positive tuning.
-- [ ] Cache policy, purge API, traffic and security telemetry.
+- [ ] Caddy route provisioning and versioned configuration.
+- [ ] Evaluate Envoy + Coraza + OWASP CRS with false-positive tuning.
+- [ ] Cache policy, purge API, traffic/security telemetry.
 - [ ] Independent edge node before customer production claims.
 
 ## M5 — ARSY Passage
 
 - [ ] Connector enrollment, revocation, and credential rotation.
-- [ ] FRP or WireGuard-based tunnel adapter.
-- [ ] Per-tenant access policies, health, and audit.
+- [ ] Evaluate FRP or WireGuard-based tunnel adapter.
+- [ ] Per-tenant access policy, health, audit, and abuse handling.
 
 ## M6 — Commercial foundations
 
-- [ ] Service catalog, plans, quotas, append-only usage ledger.
+- [ ] Service catalog, versioned plans, quotas, append-only usage ledger.
 - [ ] Invoice preview and payment-provider adapter.
 - [ ] Terms, privacy, acceptable-use, abuse response, support, and status page.
+- [ ] Reconciliation and duplicate-event tests before automated charging.
 
 ## M7 — ARSY Vault
 
@@ -65,12 +79,23 @@
 ## M8 — ARSY Compute
 
 - [ ] Separate compute nodes and tenant isolation model.
-- [ ] K3s, GitOps, resource quotas, network policy, and workload telemetry.
-- [ ] No untrusted workloads on the control-plane node.
+- [ ] K3s only when separate compute nodes exist.
+- [ ] GitOps, resource quotas, network policy, and workload telemetry.
+- [ ] No untrusted workloads on control-plane node.
 
 ## M9 — IaaS and multi-region
 
 - [ ] Dedicated KVM hypervisors and CloudStack.
 - [ ] VM image, network, IP, volume, and quota lifecycle.
 - [ ] Multiple edge regions and independent DNS locations.
-- [ ] Regional failover, upstream DDoS mitigation, and BGP/Anycast only when ready.
+- [ ] Tested regional failover and upstream DDoS arrangements before related claims.
+
+## Current execution order
+
+1. P0 CI and automated test reliability.
+2. P1 install/repair/update/domain lifecycle regression coverage.
+3. P2 onboarding and operator UX completion.
+4. P3 security, backup/restore, real-VPS release gate.
+5. Only then begin M1 tenant/Core product implementation.
+
+See `docs/LOCAL_AI_HANDOFF.md` for detailed tasks and acceptance criteria.

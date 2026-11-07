@@ -1,82 +1,158 @@
 # A-R-S-Y — Master Technical Blueprint
 
-## Architecture rules
+## 1. Product and architecture principles
 
-1. Separate management, control, and data planes.
-2. Treat every customer-facing capability as an API-backed product.
-3. Multi-tenancy, auditability, quotas, and idempotency are foundational.
-4. Keep infrastructure engines replaceable behind adapters.
-5. Start with the simplest working single-node topology; add distributed components only when an independent node is available.
-6. A single VPS is an alpha environment, not a resilient cloud region.
+A-R-S-Y is an open-source infrastructure control plane for customer-owned infrastructure. It begins as a single-VPS operator foundation and evolves toward independently deployable control and data-plane nodes.
 
-## Planes
+1. Separate management, control, and data planes as the product grows.
+2. Keep the initial release a modular monolith; do not create distributed services before they solve a real boundary.
+3. PostgreSQL is the durable source of truth.
+4. Infrastructure engines are replaceable behind explicit adapters.
+5. Tenant isolation, auditability, authorization, idempotency, and observability are requirements before customer workloads.
+6. A single VPS is a pre-alpha/alpha deployment, not a resilient region.
+7. User consent is required for host changes, public exposure, and updates.
+8. Documentation distinguishes current implementation from target architecture.
 
-### Management plane
-- ARSY Console: customer portal and operator console.
-- Product catalog, documentation, plans, usage, invoices, and support.
+## 2. Current foundation architecture (implemented scope)
 
-### Control plane
-- ARSY Core API: organizations, projects, members, roles, resources, provisioning, configuration versions, and audit.
-- ARSY Worker: asynchronous provisioning and reconciliation.
-- Future node agent: authenticated node registration, desired-state polling, apply, and observed-state reporting.
-- PostgreSQL is the durable source of truth.
+```text
+Operator browser
+  | private SSH tunnel by default
+  v
+127.0.0.1:18080 (host)
+  | Docker port mapping
+  v
+Caddy gateway
+  | private Docker network
+  v
+Fastify 5 / Node.js 24 :3000
+  | PostgreSQL driver
+  v
+PostgreSQL 17 (named persistent volume)
 
-### Data plane
-- Initial HTTP gateway: Caddy on the first VPS.
-- DNS: PowerDNS Authoritative and dnsdist, initially lab-only.
-- Edge: Envoy and Coraza after route and security tests.
-- Cache: Apache Traffic Server on a dedicated edge/cache node.
-- Tunnel: FRP prototype or a WireGuard-based adapter.
-- Storage: SeaweedFS when independent capacity and backup exist.
-- Compute: trusted Docker Compose alpha, K3s on separate compute nodes, CloudStack/KVM for VM products later.
+Host CLI:
+  install.sh -> arsy-deploy / arsy-doctor / arsy-update / arsy-domain
+Runtime state:
+  /opt/arsy/.env
+  /var/lib/arsy/deployed-sha
+  /var/lib/arsy/Caddyfile
+```
 
-## Target control-plane stack
+The Caddy gateway has a private recovery listener and separate public HTTP/HTTPS listener mappings. Public bindings default to loopback. Managed domain activation changes public bindings only after explicit CLI confirmation. The private SSH-tunnel route must remain available.
 
-| Layer | Technology |
+### Current stack
+
+| Layer | Current implementation |
 |---|---|
-| Customer portal | Next.js + TypeScript |
-| Control API | Fastify + TypeScript modular monolith |
-| API contracts | OpenAPI + JSON Schema |
-| Primary state | PostgreSQL |
-| Early job queue | PostgreSQL-backed worker |
-| Identity | Keycloak OIDC |
-| Single-node ingress | Caddy |
-| Secrets | SOPS + age initially; OpenBao after recovery design |
-| Metrics | Prometheus + Grafana OSS |
-| Host deployment | Docker Engine + Compose |
-| Infrastructure as Code | OpenTofu + Ansible |
-| Future node agent | Rust or Go with mTLS |
+| Host install | Bash installer, Ubuntu 22.04+ / Debian 12+ |
+| Runtime | Docker Engine + Compose |
+| Gateway | Caddy |
+| Web/API | Fastify 5, Node.js 24 |
+| Database | PostgreSQL 17 |
+| UI | Server-rendered HTML, local CSS and browser JS |
+| Authentication | First Superadmin, scrypt password hash, opaque DB-backed session |
+| Security controls | CSRF/origin checks, rate limits, secure cookie option, audit events |
+| Update | GitHub read-only check + exact-SHA operator-approved terminal deploy |
+| Host state | `.env`, named DB volume, `/var/lib/arsy` |
 
-## Domain model
+## 3. Onboarding and access lifecycle
 
-Minimum entities include user, identity, organization, membership, role, permission, project, environment, region, node, service instance, resource, domain, DNS zone, DNS record, tunnel, connector, origin, edge route, security policy, plan, subscription, quota, usage event, invoice, API key, secret reference, audit event, and provisioning job.
+1. **Preflight/install (CLI):** supported OS/architecture check, resource summary, confirmation, prerequisite installation, secret generation, stack startup, health check.
+2. **First Superadmin (Web):** one-time bootstrap token and administrator details; setup closes after successful creation.
+3. **Installation profile (Web):** workspace, installation, environment, contact email, timezone, language, node name, access mode, optional hostname/IPv4/proxy settings.
+4. **DNS check (Web):** reports observed A/AAAA records and expected IPv4 match. This is diagnostic only; it does not edit DNS.
+5. **Access activation (CLI/operator):**
+   - Private: SSH tunnel, default and recovery path.
+   - Managed domain: user configures DNS A and provider firewall TCP 80/443, reviews and runs `arsy-domain apply`.
+   - Existing proxy: user configures their own TLS reverse proxy to loopback; A-R-S-Y does not take over public ports.
+6. **Operate:** dashboard, doctor, logs, update detection and explicit update approval.
 
-Every tenant-owned record must carry an organization scope. Enforce authorization in the API and use PostgreSQL Row-Level Security as defense in depth.
+Saving the onboarding profile does not itself change DNS, provider firewall, host firewall, SSH, or public listener bindings.
 
-## Provisioning lifecycle
+## 4. Planes — target evolution, not current feature claims
 
-requested → validating → queued → provisioning → active → updating → deleting → deleted
+### Management plane (future)
+- ARSY Console for customer and operator experiences.
+- Product catalog, documentation, plans, usage, invoices, support, and status.
 
-Failure states include failed and degraded. Every mutation must be idempotent and include a request/idempotency key. Desired configuration is versioned; data-plane adapters report applied/observed versions. Never report active before the target service confirms the configuration.
+### Control plane (future)
+- ARSY Core API modules for identity, organizations, projects, roles, resources, provisioning, configuration versions, and audit.
+- Worker/reconciler for asynchronous jobs.
+- Authenticated node agent with narrowly scoped commands and observed-state reporting.
+- OpenAPI/JSON Schema contracts and public SDKs.
 
-## API conventions
+### Data plane (future)
+- Gateway and route adapters.
+- DNS authoritative and recursive services.
+- Edge/WAF/cache.
+- Secure connector/tunnel.
+- Object storage.
+- Container and VM compute.
 
-- Prefix: /api/v1.
-- OIDC for user sessions; scoped API keys for automation.
-- Resource-level authorization and tenant scoping on every route.
-- Idempotency keys for create/update operations with side effects.
-- Pagination, filtering, structured errors, request IDs, audit correlation IDs.
-- OpenAPI contract checked in CI.
-- Webhooks signed per endpoint with replay protection.
+No future plane is considered implemented merely because it appears in this blueprint.
 
-## Network reality
+## 5. Future technology evaluation
 
-A public authoritative DNS product needs independent nameserver endpoints and failure domains. Do not delegate a customer zone to two names that resolve to one VPS and call it redundant. A cache proxy on one VPS is not a global CDN. Volumetric DDoS mitigation requires upstream network capacity and coordination; application WAF alone is not equivalent.
+Adopt only when the milestone needs it and license/security/operations are verified.
 
-## Evolution
+| Capability | Candidate direction | Gate |
+|---|---|---|
+| API contracts | OpenAPI + JSON Schema | Stable public API modules |
+| Jobs | PostgreSQL-backed queue/worker first | Real asynchronous provisioning |
+| Identity federation | OIDC; evaluate Keycloak only when needed | Multiple users/organizations and SSO requirement |
+| Secrets | SOPS + age initially; evaluate OpenBao later | Documented recovery and key lifecycle |
+| Metrics | Prometheus + Grafana OSS | Operational metrics and alerting requirement |
+| IaC | OpenTofu + Ansible | Repeatable multi-host provisioning |
+| DNS | PowerDNS + dnsdist | Independent DNS nodes and recovery design |
+| Edge/WAF | Caddy first; evaluate Envoy + Coraza | Route scale, threat model, false-positive testing |
+| Cache | Apache Traffic Server | Independent edge/cache node |
+| Tunnel | FRP prototype or WireGuard-based adapter | Connector enrollment, revocation, and threat model |
+| Storage | SeaweedFS or another OSI-approved engine | Independent capacity, replication, backup, restore |
+| Container compute | K3s | Separate compute nodes and tenant isolation |
+| VM/IaaS | CloudStack + KVM | Dedicated hypervisors and operational maturity |
+| Node agent | Rust or Go | mTLS, least privilege, signed desired state |
 
-- Alpha: Compose on one VPS.
-- Beta: separate DNS/edge nodes plus node registration and reconciliation.
-- Growth: K3s for container compute and independent storage.
-- IaaS: CloudStack + KVM on dedicated bare-metal hypervisors.
-- Global: multiple edge regions, independent DNS locations, routing/Anycast capability, and upstream DDoS arrangements.
+This is an evaluation map, not a locked dependency list. No component is mandatory until its gate is met.
+
+## 6. Domain model (future customer platform)
+
+Potential entities: user, identity, organization, membership, role, permission, project, environment, region, node, service instance, resource, domain, DNS zone, DNS record, tunnel, connector, origin, edge route, security policy, plan, subscription, quota, usage event, invoice, API key, secret reference, audit event, and provisioning job.
+
+Before customer tenancy:
+- Every tenant-owned record must have explicit organization scope.
+- Enforce authorization in API queries and mutations; PostgreSQL RLS is defense in depth.
+- Define role/permission matrix and cross-tenant negative tests.
+- Do not create placeholder CRUD or pretend the current single-Superadmin schema is tenant-ready.
+
+## 7. Provisioning and API contracts (future)
+
+Lifecycle: requested → validating → queued → provisioning → active → updating → deleting → deleted. Failure states: failed and degraded.
+
+- Every side-effecting mutation must be idempotent.
+- Desired configuration is versioned; adapters report applied/observed versions.
+- Never report active before the target confirms configuration.
+- API prefix target: `/api/v1`.
+- Structured errors, request IDs, pagination, filtering, audit correlation IDs.
+- Signed webhooks with replay protection.
+- OpenAPI contract validation in CI before public API release.
+
+## 8. Network and trust boundaries
+
+- Keep PostgreSQL and internal service ports private.
+- Never expose Docker API/socket to customer-facing app.
+- Do not run untrusted workloads on the control-plane VPS.
+- Public DNS requires independent nameserver endpoints/failure domains before customer delegation.
+- One VPS cache is not a global CDN.
+- Application WAF is not volumetric DDoS protection.
+- Do not claim HA, global coverage, Anycast, or SLA without independent infrastructure and evidence.
+
+## 9. Evolution gates
+
+1. **First-VPS foundation:** secure install, Superadmin, onboarding, access, update consent, diagnostics, tested recovery.
+2. **Core alpha:** tenant model, RBAC, API keys, resource registry, service catalog, provisioning contracts.
+3. **Operations:** backup/restore, monitoring, incident/rollback runbooks, security review.
+4. **Network services:** DNS lab then independent nameservers; edge/WAF; connector/tunnel.
+5. **Storage and compute:** independent nodes, isolation, metering, backups.
+6. **IaaS/multi-region:** dedicated hypervisors, independent regions, tested failover and upstream network capability.
+
+Do not skip an earlier gate because a later technology is attractive.

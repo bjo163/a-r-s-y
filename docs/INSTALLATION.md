@@ -1,106 +1,121 @@
-# A-R-S-Y — Single VPS installation
+# A-R-S-Y — Single VPS Installation and Onboarding
 
-## Supported host
+## Supported host target
 
 - Ubuntu Server 22.04+ or Debian 12+.
-- amd64 or arm64.
-- Recommended alpha: 8 vCPU, 16 GB RAM, 200 GB NVMe.
-- Constrained development: 4 vCPU, 8 GB RAM, 100 GB SSD.
+- AMD64 or ARM64.
+- Root/sudo required.
+- Planning recommendation: 8 vCPU, 16 GB RAM, 200 GB NVMe. Smaller dev hosts may work but need testing.
 
-## Install
+## 1. Download, inspect, install
 
-Download and inspect the installer:
-
-~~~bash
+```bash
 curl -fsSLo /tmp/arsy-install.sh https://raw.githubusercontent.com/bjo163/a-r-s-y/main/install.sh
 less /tmp/arsy-install.sh
 sudo bash /tmp/arsy-install.sh
-~~~
+```
 
 The installer:
-- Installs Docker Engine and Compose from Docker's official APT repository only when needed.
-- Clones A-R-S-Y into /opt/arsy.
-- Generates PostgreSQL password, session secret, and one-time Superadmin setup token.
-- Stores secrets in /opt/arsy/.env with mode 0600.
-- Starts PostgreSQL, the Fastify web application, and Caddy gateway.
-- Waits for the application/database health endpoint.
-- Prints the one-time setup key.
+- Prints host/OS/architecture/resource/Docker/listener preflight information.
+- Requires interactive confirmation; non-interactive execution requires explicit `ARSY_INSTALL_CONFIRM=1`.
+- Installs basic tools and configures the official Docker APT repository only when Docker or Compose is missing.
+- Installs only the Compose plugin when Docker already exists and only Compose is missing.
+- Clones/fetches A-R-S-Y, creates secrets, and stores them in `/opt/arsy/.env` (mode 0600).
+- Starts PostgreSQL, Fastify app, and Caddy gateway; waits for health.
+- Installs `arsy-update`, `arsy-doctor`, and `arsy-domain` host commands.
 
-The installer does not edit the host firewall or SSH daemon. It does not take over public port 80/443. The application is not published directly; only Caddy exposes the loopback port.
+The installer does not edit host firewall rules or SSH daemon settings. It does not open public ports. Existing environment values and database volume must be preserved during repair/update.
 
-## Open the web app
+## 2. Private web access
 
-Default listener: 127.0.0.1:18080.
+Default host listener is `127.0.0.1:18080`. From the workstation:
 
-From your workstation:
+```powershell
+ssh -L 18080:127.0.0.1:18080 USER@VPS
+```
 
-~~~bash
-ssh -L 18080:127.0.0.1:18080 YOUR_OPERATOR_USER@YOUR_VPS_HOST
-~~~
+Open `http://127.0.0.1:18080`.
 
-Open http://127.0.0.1:18080. The first visit redirects to /setup.
+Retrieve the one-time bootstrap token on the VPS if needed:
 
-## Create the first Superadmin
-
-The installer prints the bootstrap key after successful installation. If needed, retrieve it on the VPS:
-
-~~~bash
+```bash
 sudo grep '^ARSY_SETUP_TOKEN=' /opt/arsy/.env
-~~~
+```
 
-Complete the first-boot form with:
-- One-time bootstrap key.
+## 3. Create first Superadmin
+
+Enter:
+- One-time setup token.
 - Display name.
-- Email address.
-- Password of at least 14 characters.
+- Email.
+- Password (minimum 14 characters).
 - Password confirmation.
 
-The setup transaction creates the first superadmin, records an audit event, and sets setup_completed=true. The setup route is permanently closed after that. There is no open registration endpoint.
+The first setup is transactional and creates one active Superadmin. Once complete, setup is permanently closed; there is no open registration route. Keep first setup private via SSH tunnel.
 
-## Update behavior
+## 4. Complete Web installation profile
 
-The dashboard checks the latest commit on GitHub main. If a newer version is found, the application asks for approval. After you approve, it shows the exact command for the exact commit.
+The wizard collects:
+- Workspace name and contact email.
+- Installation name and environment.
+- Node name.
+- Timezone and language preference (id/en).
+- Access mode: private, public managed domain, or existing proxy.
+- Hostname/expected IPv4 for public mode.
+- Proxy metadata where relevant.
 
-Run the command displayed by the app in the VPS terminal. Or manually check:
+Saving the profile does not configure DNS, open ports, alter firewall/SSH, or activate the public domain.
 
-~~~bash
+## 5. Choose access mode
+
+### Private (recommended default)
+Continue using the SSH tunnel. This is also the recovery path after public domain activation.
+
+### Managed public domain
+1. Create a DNS A record pointing to the VPS public IPv4.
+2. Allow inbound TCP 80 and 443 in the VPS provider firewall/security group.
+3. Ensure ports 80/443 are not already used by another service.
+4. Run the reviewed activation command:
+
+```bash
+sudo arsy-domain apply --hostname panel.example.com
+```
+
+The helper validates prerequisites, public IPv4, DNS A, AAAA, and port availability; prints planned changes; requires confirmation; updates gateway binding/config; enables secure cookies; and performs an HTTPS health check. On failure it attempts to restore the prior environment and Caddy configuration.
+
+The current helper supports IPv4 only and rejects an AAAA record. A-R-S-Y does not create or edit DNS records or provider firewall rules.
+
+### Existing reverse proxy
+Keep A-R-S-Y private and configure the existing proxy upstream to:
+
+```text
+http://127.0.0.1:18080
+```
+
+Run `sudo arsy-domain proxy --hostname panel.example.com` to print example guidance. TLS terminates at the existing proxy. Enable Secure cookies only after HTTPS and trusted forwarded-protocol handling are verified. A-R-S-Y does not take over ports 80/443 in this mode.
+
+## 6. Updates
+
+Dashboard checks GitHub main. **Later** leaves the VPS unchanged. **Update now** records approval for the exact SHA and displays a terminal command. The VPS changes only when the operator runs the command.
+
+```bash
 sudo arsy-update
-~~~
+```
 
-The terminal command asks for confirmation. GitHub commits and releases never trigger VPS deployment.
+Never treat a push, merge, release, or detection as deployment authorization.
 
-## Repair / reinstall
+## 7. Repair and diagnostics
 
-To explicitly repair the installation or deploy the current main revision:
-
-~~~bash
+```bash
 sudo bash /opt/arsy/install.sh --repair
-~~~
-
-This preserves .env and the named PostgreSQL volume. Never use docker compose down -v unless you intentionally want to delete the database.
-
-## Operations
-
-~~~bash
 sudo arsy-doctor
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml ps
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f app
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f db
-~~~
+```
 
-## HTTPS and cookies
+Do not use `docker compose down -v` for routine repair/update; it deletes the named database volume.
 
-The default gateway is loopback-only HTTP for private setup via SSH tunnel. When placing A-R-S-Y behind a trusted HTTPS reverse proxy, set:
+## 8. Limits and release status
 
-~~~dotenv
-ARSY_COOKIE_SECURE=true
-~~~
-
-Then apply that configuration through a deliberate operator-approved update/restart. Do not expose the setup page over public HTTP.
-
-## Single VPS limits
-
-- No public production DNS delegation to one nameserver failure domain.
-- No global CDN, Anycast, volumetric DDoS, HA, or SLA claims.
-- No arbitrary customer code execution on the control-plane host.
-- Backups must be encrypted and stored outside the VPS/provider failure domain before customer data is accepted.
+This is a pre-alpha foundation. It is not a public cloud region. No HA, global CDN, Anycast, volumetric DDoS, customer DNS hosting, or arbitrary customer compute is provided. Encrypted off-site backups and successful restore drills are required before accepting customer data. Real VPS testing remains a release gate.
