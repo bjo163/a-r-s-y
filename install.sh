@@ -74,7 +74,7 @@ git checkout --detach "$TARGET_SHA"
 
 ensure_env() {
   local key="$1" value="$2"
-  if ! grep -qE "^\${key}=" .env 2>/dev/null; then
+  if ! grep -qE "^${key}=" .env 2>/dev/null; then
     printf '%s=%s\n' "$key" "$value" >> .env
   fi
 }
