@@ -3,7 +3,8 @@
 Before changing code, read these files in order:
 
 1. `README.md` — current product status and safe operator workflow.
-2. `docs/LOCAL_AI_HANDOFF.md` — authoritative handoff, current verified state, constraints, and next work.
+2. `TODO.md` — short actionable execution queue.
+3. `docs/LOCAL_AI_HANDOFF.md` — authoritative handoff, current verified state, constraints, and next work.
 3. `docs/00-narrative-and-positioning.md` — product identity and positioning.
 4. `docs/02-master-blueprint.md` — current architecture versus future target.
 5. `docs/05-roadmap.md` — milestone gates and priorities.
