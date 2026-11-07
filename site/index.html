@@ -67,7 +67,7 @@
             panel.classList.remove("visible");
             return;
           }
-          note.textContent = "Update approved. Run sudo arsy-update on the VPS to apply it. No update runs before this confirmation.";
+          note.textContent = "Update approved. Run sudo arsy-update --yes on the VPS to apply this approved update. The command will not ask twice.";
           yes.disabled = true;
           yes.textContent = "Approved — pending VPS command";
         });
