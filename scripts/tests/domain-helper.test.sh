@@ -39,7 +39,8 @@ SH
   cat > "$dir/bin/docker" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$MOCK_DOCKER_LOG"
-if [[ "${MOCK_DOCKER_FAIL_CONFIG:-0}" == "1" && "$*" == *"config"* ]]; then exit 1; fi
+if [[ "${MOCK_DOCKER_FAIL_CADDY:-0}" == "1" && "$*" == *"caddy validate"* ]]; then exit 1; fi
+if [[ "${MOCK_DOCKER_FAIL_CONFIG:-0}" == "1" && "$*" == *"config --quiet"* ]]; then exit 1; fi
 if [[ "${MOCK_DOCKER_FAIL_FIRST_UP:-0}" == "1" && "$*" == *"up -d app gateway"* && ! -f "$MOCK_DOCKER_COUNTER" ]]; then
   touch "$MOCK_DOCKER_COUNTER"
   exit 1
@@ -87,7 +88,7 @@ for case_name in invalid-host invalid-ip private-ip busy missing-a mismatch aaaa
   cmp -s "$dir/state/domain-state" "$dir/domain.before" || fail "$case_name modified domain-state"
 done
 
-for failure in compose-config compose-up tls; do
+for failure in caddy-config compose-config compose-up tls; do
   make_case "$failure"
   dir="$TMP/$failure"
   cp "$dir/app/.env" "$dir/env.before"
@@ -95,6 +96,7 @@ for failure in compose-config compose-up tls; do
   cp "$dir/state/domain-state" "$dir/domain.before"
   extra=""
   case "$failure" in
+    caddy-config) extra="MOCK_DOCKER_FAIL_CADDY=1" ;;
     compose-config) extra="MOCK_DOCKER_FAIL_CONFIG=1" ;;
     compose-up) extra="MOCK_DOCKER_FAIL_FIRST_UP=1" ;;
     tls) extra="MOCK_TLS_FAIL=1" ;;

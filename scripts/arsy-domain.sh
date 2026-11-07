@@ -9,6 +9,7 @@ ENV_FILE="${ARSY_ENV_FILE:-$APP_DIR/.env}"
 CADDY_FILE="${ARSY_CADDY_FILE:-$STATE_DIR/Caddyfile}"
 DOMAIN_STATE_FILE="${ARSY_DOMAIN_STATE_FILE:-$STATE_DIR/domain-state}"
 COMPOSE_FILE="${ARSY_COMPOSE_FILE:-$APP_DIR/compose.yaml}"
+CADDY_IMAGE="${ARSY_CADDY_IMAGE:-caddy:2-alpine}"
 HEALTH_ATTEMPTS="${ARSY_DOMAIN_HEALTH_ATTEMPTS:-90}"
 HEALTH_INTERVAL="${ARSY_DOMAIN_HEALTH_INTERVAL:-2}"
 source "$SCRIPT_DIR/arsy-network.sh"
@@ -167,6 +168,10 @@ set_env ARSY_PUBLIC_HTTPS_PORT "443"
 set_env ARSY_COOKIE_SECURE "true"
 cd "$APP_DIR"
 compose() { docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"; }
+if ! docker run --rm --network none -v "$CADDY_FILE:/etc/caddy/Caddyfile:ro" "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; then
+  rollback
+  die "Caddy configuration validation failed. Previous configuration restored."
+fi
 if ! compose config -q; then rollback; die "Compose validation failed. Previous config restored."; fi
 if ! compose up -d app gateway; then
   rollback
