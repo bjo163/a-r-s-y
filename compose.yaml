@@ -5,7 +5,7 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "\${ARSY_HTTP_BIND:-127.0.0.1}:\${ARSY_HTTP_PORT:-18080}:80"
+      - "${ARSY_HTTP_BIND:-127.0.0.1}:${ARSY_HTTP_PORT:-18080}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./site:/srv:ro
