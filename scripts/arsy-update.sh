@@ -30,8 +30,12 @@ printf '\n'
 
 case "${1:-}" in
   --yes)
-    log "Applying update already approved in the A-R-S-Y app."
-    exec "$DEPLOY_BIN" "$LATEST_SHA"
+    TARGET_SHA="${2:-$LATEST_SHA}"
+    [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || die "Approved SHA is invalid."
+    git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null || die "Approved commit is not available locally."
+    git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main || die "Approved commit is no longer part of main."
+    log "Applying the exact update approved in the A-R-S-Y app."
+    exec "$DEPLOY_BIN" "$TARGET_SHA"
     ;;
   "")
     read -r -p "Do you want to update A-R-S-Y now? [y/N] " answer
@@ -46,6 +50,6 @@ case "${1:-}" in
     esac
     ;;
   *)
-    die "Usage: sudo arsy-update [--yes]"
+    die "Usage: sudo arsy-update [--yes [approved-commit-sha]]"
     ;;
 esac
