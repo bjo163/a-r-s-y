@@ -93,6 +93,7 @@ chmod 0600 .env
 
 install -d -m 0750 /var/log/arsy
 install -d -m 0755 /var/lib/arsy
+chmod 0755 /var/lib/arsy
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
