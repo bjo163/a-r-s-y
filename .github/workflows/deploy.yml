@@ -1,0 +1,81 @@
+name: Deploy A-R-S-Y to single VPS
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arsy-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy exact Git commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate shell scripts from triggering commit
+        shell: bash
+        env:
+          REPOSITORY: https://github.com/bjo163/a-r-s-y.git
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git clone --quiet "$REPOSITORY" "$RUNNER_TEMP/arsy-source"
+          git -C "$RUNNER_TEMP/arsy-source" fetch --quiet --tags origin
+          git -C "$RUNNER_TEMP/arsy-source" checkout --quiet --detach "$DEPLOY_SHA"
+          bash -n "$RUNNER_TEMP/arsy-source/install.sh"
+          bash -n "$RUNNER_TEMP/arsy-source/scripts/arsy-deploy.sh"
+          bash -n "$RUNNER_TEMP/arsy-source/scripts/arsy-deploy-gate.sh"
+          bash -n "$RUNNER_TEMP/arsy-source/scripts/arsy-doctor.sh"
+
+      - name: Validate deployment secrets
+        shell: bash
+        env:
+          ARSY_DEPLOY_HOST: ${{ secrets.ARSY_DEPLOY_HOST }}
+          ARSY_DEPLOY_USER: ${{ secrets.ARSY_DEPLOY_USER }}
+          ARSY_DEPLOY_SSH_KEY: ${{ secrets.ARSY_DEPLOY_SSH_KEY }}
+          ARSY_DEPLOY_KNOWN_HOSTS: ${{ secrets.ARSY_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for name in ARSY_DEPLOY_HOST ARSY_DEPLOY_USER ARSY_DEPLOY_SSH_KEY ARSY_DEPLOY_KNOWN_HOSTS; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing GitHub Actions secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Prepare pinned SSH identity
+        shell: bash
+        env:
+          ARSY_DEPLOY_SSH_KEY: ${{ secrets.ARSY_DEPLOY_SSH_KEY }}
+          ARSY_DEPLOY_KNOWN_HOSTS: ${{ secrets.ARSY_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$ARSY_DEPLOY_SSH_KEY" > "$HOME/.ssh/arsy_deploy"
+          printf '%s\n' "$ARSY_DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/arsy_deploy" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy commit
+        shell: bash
+        env:
+          ARSY_DEPLOY_HOST: ${{ secrets.ARSY_DEPLOY_HOST }}
+          ARSY_DEPLOY_USER: ${{ secrets.ARSY_DEPLOY_USER }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          ssh -i "$HOME/.ssh/arsy_deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=15 \
+            "$ARSY_DEPLOY_USER@$ARSY_DEPLOY_HOST" "deploy $DEPLOY_SHA"
