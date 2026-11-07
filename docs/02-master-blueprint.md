@@ -156,3 +156,16 @@ Lifecycle: requested → validating → queued → provisioning → active → u
 6. **IaaS/multi-region:** dedicated hypervisors, independent regions, tested failover and upstream network capability.
 
 Do not skip an earlier gate because a later technology is attractive.
+
+
+## Canonical product and engineering specifications
+
+This blueprint is supported by the following normative documents:
+- docs/09-product-and-service-catalog.md defines product surfaces, service families, maturity labels and first-VPS non-goals.
+- docs/10-platform-contracts-and-data-model.md defines conceptual entities, tenant isolation, resource/job lifecycle, API and migration contracts.
+- docs/11-security-privacy-and-trust.md defines trust zones, threat coverage, privacy, supply chain and security release gates.
+- docs/12-operations-quality-and-release.md defines testing, CI, environments, backup, rollback, observability and release evidence.
+- docs/13-onboarding-and-experience.md defines first-run journey, dashboard information architecture, status semantics, localization and privileged UX.
+- docs/08-autonomous-agent-operating-model.md defines how agents execute the roadmap without routine user confirmation and which operations remain operator-controlled.
+
+These specifications do not change the current implementation status. The current single-VPS system remains pre-alpha until its acceptance evidence is recorded. Future services remain gated.

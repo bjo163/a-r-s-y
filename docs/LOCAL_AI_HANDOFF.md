@@ -205,3 +205,10 @@ At the end of each task, update this file and the relevant docs. Report:
 6. Next smallest independent task.
 
 Do not dump speculative future architecture into code. Implement the smallest safe next increment.
+
+
+## 10. Expanded canonical context and autonomous policy
+
+Before work on product scope or architecture, read docs/02-master-blueprint.md and docs/09-product-and-service-catalog.md. For domain/API work read docs/10-platform-contracts-and-data-model.md. For security/privacy read docs/11-security-privacy-and-trust.md. For tests, backup, deployment and release read docs/12-operations-quality-and-release.md. For wizard/dashboard/localization read docs/13-onboarding-and-experience.md. Agent authority, issue quality, merge awareness, continuation rules and operator approval boundaries are defined by docs/08-autonomous-agent-operating-model.md.
+
+The agent should make ordinary engineering decisions independently, execute the safe queue end-to-end, and not ask the owner to choose routine implementation details. It must not perform real-host changes, public exposure, destructive production operations, paid-resource creation, live secret rotation or external/legal commitments without operator approval. A blocked high-impact action does not block unrelated repository tasks.

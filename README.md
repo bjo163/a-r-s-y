@@ -86,3 +86,15 @@ This is not a global CDN or resilient cloud region. Do not claim HA, Anycast, vo
 ## License
 
 Core source: AGPL-3.0-only. Documentation: CC-BY-SA-4.0 is the intended policy; verify individual file notices before reuse. Brand marks are subject to a separate trademark policy.
+
+
+## Complete product and agent blueprint
+
+- [Product and service catalog](docs/09-product-and-service-catalog.md)
+- [Platform contracts and data model](docs/10-platform-contracts-and-data-model.md)
+- [Security, privacy and trust model](docs/11-security-privacy-and-trust.md)
+- [Operations, quality and release](docs/12-operations-quality-and-release.md)
+- [Onboarding and product experience](docs/13-onboarding-and-experience.md)
+- [Autonomous AI operating model](docs/08-autonomous-agent-operating-model.md)
+
+Local agents must follow AGENTS.md and the autonomous operating model. Routine repository engineering should proceed without user confirmation; high-impact external actions remain operator-approved.

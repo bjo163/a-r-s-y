@@ -99,3 +99,8 @@ This roadmap tracks actual delivery, not aspirations. A checked item must exist 
 5. Only then begin M1 tenant/Core product implementation.
 
 See `docs/LOCAL_AI_HANDOFF.md` for detailed tasks and acceptance criteria.
+
+
+## Autonomous execution and cross-document rules
+
+The active queue is TODO.md. Agent execution, issue/PR lifecycle, merge awareness, verification and operator approval boundaries are defined in docs/08-autonomous-agent-operating-model.md. Product maturity and service entry gates are defined in docs/09-product-and-service-catalog.md. API/resource contracts, security, operations and UX requirements are in docs/10 through docs/13. These documents are normative together; no roadmap item authorizes bypassing an earlier gate or an operator-approval boundary.

@@ -60,3 +60,15 @@ This is the short, actionable queue for the next implementation cycle. It is not
 ## Explicitly not next
 
 Do not begin tenant CRUD, DNS hosting, WAF/CDN, tunnels, storage, compute, K3s, CloudStack, billing, Keycloak, node agents, or multi-region work until the first-VPS foundation gate is met. See the master blueprint for later adoption gates.
+
+
+## Autonomous execution contract
+
+This queue is executed under docs/08-autonomous-agent-operating-model.md. Agents must not pause for routine technical choices or ask the owner to approve ordinary repository changes. They must inspect current main, issues, PRs and CI; avoid duplicate tasks; implement, test, document, commit and verify; then continue to the next safe independent task. Stop only the specific action requiring operator authority (public exposure, firewall/SSH/DNS/provider change, real-host deploy/restart, destructive data action, live secret rotation, paid resource, legal/commercial commitment or external customer communication). Record the blocker and exact operator step, then continue unrelated work.
+
+## Documentation completeness gate
+
+- [ ] Confirm README links to every canonical product, security, operations, UX and agent document.
+- [ ] Check all cross-document links and terms; keep one canonical home per topic.
+- [ ] Ensure each roadmap milestone has entry/exit gates and each feature is maturity-labelled.
+- [ ] Ensure handoff and verification snapshot reflect current main, not historical assumptions.
