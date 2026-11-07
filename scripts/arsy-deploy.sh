@@ -27,7 +27,6 @@ exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
 cd "$APP_DIR"
 [[ -f .env ]] || die "Missing $APP_DIR/.env."
 chmod 0600 .env
-bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"
 
 # Runtime gateway configuration must survive Git checkouts and updates.
 install -d -m 0755 /var/lib/arsy
@@ -62,6 +61,9 @@ git fetch --prune origin main
 git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null || die "Target commit is not available."
 git checkout --detach "$TARGET_SHA"
 git reset --hard "$TARGET_SHA"
+# Run the migration from the approved target tree so existing installations
+# without this helper can safely transition before the new Compose mapping.
+bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"
 
 compose() {
   docker compose --env-file .env -f compose.yaml "$@"
