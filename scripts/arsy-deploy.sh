@@ -74,10 +74,13 @@ install -m 0640 -o root -g root /var/lib/arsy-deployed-sha.tmp /var/lib/arsy/dep
 rm -f /var/lib/arsy-deployed-sha.tmp
 
 # Refresh privileged entrypoints only after the new release is healthy.
-if [[ -f scripts/arsy-deploy.sh && -f scripts/arsy-deploy-gate.sh ]]; then
+if [[ -f scripts/arsy-deploy.sh ]]; then
   install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
-  install -m 0755 scripts/arsy-deploy-gate.sh /usr/local/sbin/arsy-deploy-gate
 fi
+
+printf '{ "current_sha": "%s", "deployed_at": "%s" }\n' "$TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.json.tmp
+install -m 0644 site/version.json.tmp site/version.json
+rm -f site/version.json.tmp
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
 docker compose --env-file .env -f compose.yaml ps
