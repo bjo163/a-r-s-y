@@ -25,6 +25,7 @@ ENV
 expect_fail() { if bash "$VALIDATOR" "$2" >/dev/null 2>&1; then fail "$1 should have been rejected"; fi; }
 valid="$TMP/valid.env"; write_valid "$valid"; bash "$VALIDATOR" "$valid" >/dev/null
 empty="$TMP/empty.env"; write_valid "$empty"; sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=/' "$empty"; expect_fail "empty secret" "$empty"
+placeholder="$TMP/placeholder.env"; write_valid "$placeholder"; sed -i 's/^ARSY_SETUP_TOKEN=.*/ARSY_SETUP_TOKEN=CHANGE-ME-ONE-TIME-SETUP-KEY/' "$placeholder"; expect_fail "template secret" "$placeholder"
 duplicate="$TMP/duplicate.env"; write_valid "$duplicate"; printf 'ARSY_SESSION_SECRET=duplicate\n' >> "$duplicate"; expect_fail "duplicate key" "$duplicate"
 bad_port="$TMP/bad-port.env"; write_valid "$bad_port"; sed -i 's/^ARSY_PUBLIC_HTTP_PORT=.*/ARSY_PUBLIC_HTTP_PORT=70000/' "$bad_port"; expect_fail "invalid port" "$bad_port"
 bad_bind="$TMP/bad-bind.env"; write_valid "$bad_bind"; sed -i 's/^ARSY_PUBLIC_HTTP_BIND=.*/ARSY_PUBLIC_HTTP_BIND=192.0.2.10/' "$bad_bind"; expect_fail "invalid bind" "$bad_bind"
