@@ -7,11 +7,17 @@ A-R-S-Y is an open hybrid-cloud control plane inspired by the MoonWitness coordi
 
 ## Current status
 
-**Foundation / pre-alpha · single VPS**
+**Foundation / pre-alpha · one VPS**
 
-The first build provides a small Caddy gateway, a health endpoint, version metadata, a simple update notice, and a consent-based update command. It is not yet the complete cloud control plane.
+The first usable web foundation includes:
+- Branded web console.
+- One-time first Superadmin onboarding.
+- Password login, PostgreSQL-backed sessions, logout, and audit events.
+- Dashboard showing the Core Node and planned infrastructure modules.
+- Health endpoint and database readiness check.
+- Update detection from the app. Updates are never installed automatically.
 
-The customer console, Core API, identity, tenant management, DNS, WAF, tunnel, storage, compute and billing are planned modules; they must not be presented as implemented.
+DNS, WAF, CDN, tunnel, storage, compute, customer billing, additional users, and multi-node management are future milestones; the first dashboard does not pretend those services are already implemented.
 
 ## Install
 
@@ -19,69 +25,84 @@ Supported: Ubuntu 22.04+ or Debian 12+ (amd64/arm64).
 
 Recommended alpha VPS: 8 vCPU, 16 GB RAM, 200 GB NVMe.
 
-\`\`\`bash
+Download and inspect the installer, then run it:
+
+~~~bash
 curl -fsSLo /tmp/arsy-install.sh https://raw.githubusercontent.com/bjo163/a-r-s-y/main/install.sh
 less /tmp/arsy-install.sh
 sudo bash /tmp/arsy-install.sh
-\`\`\`
+~~~
 
-The installer preserves existing Docker/Compose and existing \`.env\` where possible. It uses the loopback-only listener \`127.0.0.1:18080\` by default and does not take over ports 80/443.
+The installer installs Docker Engine/Compose when needed, creates /opt/arsy, generates database/session/setup secrets, starts PostgreSQL + the web app + the private gateway, and runs a health check. Existing .env values are preserved.
 
-Inspect through an SSH tunnel:
+The gateway listens on 127.0.0.1:18080; it does not take over public ports 80/443. Inspect the app from your workstation through SSH:
 
-\`\`\`bash
+~~~bash
 ssh -L 18080:127.0.0.1:18080 YOUR_OPERATOR_USER@YOUR_VPS_HOST
-\`\`\`
+~~~
 
-Open \`http://127.0.0.1:18080\`; health endpoint: \`/healthz\`.
+Open http://127.0.0.1:18080.
+
+## First Superadmin onboarding
+
+The installer prints a one-time bootstrap key after installation. Keep it private.
+
+1. Open the web app and go to the initial setup page.
+2. Paste the bootstrap key.
+3. Enter the Superadmin display name, email, and a password of at least 14 characters.
+4. Submit once. A-R-S-Y creates the first Superadmin and opens the dashboard.
+
+To retrieve the key later from the VPS:
+
+~~~bash
+sudo grep '^ARSY_SETUP_TOKEN=' /opt/arsy/.env
+~~~
+
+Initial setup closes permanently after the first Superadmin is created. There is no public registration route. The setup key is not a substitute for TLS; keep the first setup private through an SSH tunnel.
 
 ## Updates: detect first, ask, then update
 
 A-R-S-Y must never silently update itself.
 
-- The application checks whether a newer commit is available.
-- If one is available, it shows an **Update available** notice and asks whether you want to update.
-- **Later** leaves the running version untouched.
-- **Update now** asks for confirmation.
-- For this foundation build, after approval run \`sudo arsy-update\` in the VPS terminal. The authenticated one-click update action will be connected when the Core API is implemented.
+- The dashboard checks GitHub main and shows a notice if a newer commit exists.
+- **Later** keeps the current version untouched.
+- **Update now** records your approval for the exact commit and displays a command.
+- Run the displayed command in the VPS terminal to apply that exact approved commit.
+- A normal terminal check also asks before changing anything.
 
-Manual check:
-
-\`\`\`bash
+~~~bash
 sudo arsy-update
-\`\`\`
+~~~
 
-The command compares the installed version with GitHub \`main\`, shows the available commit and asks \`Do you want to update A-R-S-Y now? [y/N]\`. Only an explicit yes starts deployment. No means no changes.
+GitHub pushes and releases run CI or make a version available; they do not deploy to the VPS.
 
-## GitHub behavior
+## Repair / reinstall
 
-- Pushes and merges to \`main\` run CI checks only.
-- Publishing a GitHub Release does not deploy to the VPS.
-- No GitHub SSH deploy key or VPS deployment secrets are required.
-- A new commit only becomes an available update; it is never installed without approval.
+An explicit repair is available when you choose to run the installer again:
 
-## Safety boundaries for one VPS
+~~~bash
+sudo bash /opt/arsy/install.sh --repair
+~~~
 
-- No Kubernetes or CloudStack required on the first VPS.
-- No arbitrary customer-code execution on the control-plane host.
-- No production DNS delegation to one nameserver failure domain.
-- No global CDN, Anycast, volumetric DDoS, HA, or SLA claims without the required network and test evidence.
-- Customer data requires encrypted backups outside the VPS/provider failure domain.
+It preserves .env and the PostgreSQL volume. Do not use docker compose down -v; that deletes the database volume.
 
-## Repository layout
+## Useful commands
 
-\`\`\`text
-install.sh                 # simple single-VPS bootstrap
-compose.yaml               # minimal foundation gateway
-Caddyfile                  # loopback-only HTTP health + landing page
-scripts/arsy-deploy.sh     # low-level exact-commit updater
-scripts/arsy-update.sh     # checks version and asks before updating
-scripts/arsy-doctor.sh     # diagnostics
-site/                      # landing page and version notice
-.github/workflows/ci.yml   # CI only; never deploys
-brand/                     # SVG mark, wordmark, design tokens
-docs/                      # narrative, architecture, update policy, security
-\`\`\`
+~~~bash
+sudo arsy-doctor
+sudo arsy-update
+sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml ps
+sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f app
+~~~
+
+## One-VPS boundaries
+
+- This is a pre-alpha control plane, not a global CDN or public cloud region.
+- Do not delegate customer DNS to one nameserver failure domain.
+- Do not claim HA, Anycast, volumetric DDoS protection, or distributed-storage guarantees.
+- Do not execute arbitrary customer code on the control-plane host.
+- Backups for customer data must leave the VPS/provider failure domain.
+- When the app is exposed through HTTPS, set ARSY_COOKIE_SECURE=true in /opt/arsy/.env and redeploy with an explicitly approved update.
 
 ## License
 
