@@ -102,9 +102,9 @@ set_env ARSY_HTTPS_PORT "443"
 set_env ARSY_COOKIE_SECURE "true"
 cd "$APP_DIR"
 if ! docker compose config -q; then rollback; die "Compose validation failed. Previous config restored."; fi
-if ! docker compose up -d gateway; then
+if ! docker compose up -d app gateway; then
   rollback
-  die "Could not start the gateway. Previous configuration restored."
+  die "Could not recreate the app with secure-cookie settings and start the gateway. Previous configuration restored."
 fi
 
 # Resolve the hostname to loopback for the local check. This avoids depending
