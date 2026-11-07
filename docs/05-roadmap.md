@@ -5,22 +5,24 @@
 - [x] Product narrative and MoonWitness relationship.
 - [x] Brand system and initial SVG concepts.
 - [x] Single-VPS architecture and security boundaries.
-- [x] Docker Compose foundation gateway and installer.
-- [x] App-side version comparison and update-available notice.
-- [x] Consent-based update command.
+- [x] Docker Compose foundation and installer.
+- [x] Consent-based update detection and approval.
 - [x] GitHub CI without automatic VPS deployment.
-- [ ] VPS installation and health verification.
-- [ ] Backup destination and restore drill.
+- [x] Fastify web console and health endpoint.
+- [x] One-time first Superadmin onboarding.
+- [x] Login, PostgreSQL-backed sessions, logout, and audit events.
+- [ ] VPS installation and live browser verification.
+- [ ] Encrypted off-site backup and restore drill.
 
 ## M1 — ARSY Core alpha
 
-- [ ] Next.js customer/operator console.
-- [ ] Fastify modular control API.
-- [ ] PostgreSQL schema and tenant-scoping tests.
-- [ ] OIDC identity, operator MFA, organization/project membership.
-- [ ] Resource registry, audit log, API keys.
-- [ ] Idempotent provisioning jobs and OpenAPI contract.
-- [ ] Authenticated one-click update action; only after explicit operator confirmation.
+- [x] Initial Superadmin identity.
+- [x] Single-VPS operator dashboard.
+- [ ] Organization and project management.
+- [ ] Tenant-scoped RBAC and API keys.
+- [ ] Resource registry and service catalog.
+- [ ] Authenticated host update agent for app-approved updates.
+- [ ] OpenAPI contract and provisioning jobs.
 
 ## M2 — Operations baseline
 
