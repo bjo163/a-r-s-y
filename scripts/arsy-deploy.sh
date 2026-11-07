@@ -131,6 +131,8 @@ install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
 install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
 install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
+install -m 0755 scripts/arsy-backup.sh /usr/local/sbin/arsy-backup
+install -m 0755 scripts/arsy-restore-drill.sh /usr/local/sbin/arsy-restore-drill
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
 compose ps
