@@ -49,7 +49,7 @@ For this foundation build, apply an approved update from the VPS:
 sudo arsy-update
 ~~~
 
-The command displays current and available versions and asks for confirmation. Press Enter or answer anything other than yes to keep the existing version.
+The command displays current and available versions and asks for confirmation. Press Enter or answer anything other than yes to keep the existing version. If the app has already recorded your approval, use `sudo arsy-update --yes`.
 
 ## Useful commands
 
