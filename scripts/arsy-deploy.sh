@@ -17,7 +17,8 @@ command -v curl >/dev/null 2>&1 || die "curl is not installed."
 command -v flock >/dev/null 2>&1 || die "flock is not installed."
 command -v openssl >/dev/null 2>&1 || die "openssl is not installed."
 
-install -d -m 0750 "$LOG_DIR" /var/lib/arsy /run/lock
+install -d -m 0750 "$LOG_DIR" /run/lock
+install -d -m 0755 /var/lib/arsy
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another deployment is already running."
 exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
@@ -106,7 +107,7 @@ done
 [[ "$healthy" -eq 1 ]] || rollback "Health check failed at $HEALTH_URL."
 
 printf '%s\n' "$TARGET_SHA" > /var/lib/arsy/deployed-sha.tmp
-install -m 0640 -o root -g root /var/lib/arsy/deployed-sha.tmp /var/lib/arsy/deployed-sha
+install -m 0444 -o root -g root /var/lib/arsy/deployed-sha.tmp /var/lib/arsy/deployed-sha
 rm -f /var/lib/arsy/deployed-sha.tmp
 
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
