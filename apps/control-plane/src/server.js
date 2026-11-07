@@ -243,8 +243,7 @@ async function requirePageAuth(request, reply) {
 async function requireApiAuth(request, reply) {
   const session = await getSession(request);
   if (!session) {
-    reply.code(401).send({ ok: false, error: 'Sesi berakhir. Silakan login kembali.' });
-    return;
+    return reply.code(401).send({ ok: false, error: 'Sesi berakhir. Silakan login kembali.' });
   }
   request.arsySession = session;
 }
@@ -452,8 +451,8 @@ app.post('/api/update/approve', { preHandler: requireApiAuth }, async (request, 
   return reply.send({
     ok: true,
     targetSha: update.availableSha,
-    command: 'sudo arsy-update --yes',
-    message: 'Persetujuan dicatat. Jalankan perintah yang ditampilkan di terminal VPS untuk menerapkan update.'
+    command: 'sudo arsy-update --yes ' + update.availableSha,
+    message: 'Persetujuan dicatat untuk versi ini. Jalankan perintah yang ditampilkan di terminal VPS untuk menerapkannya.'
   });
 });
 
