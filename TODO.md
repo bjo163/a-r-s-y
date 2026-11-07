@@ -30,6 +30,10 @@ Status key:
   - Installer validates configuration before deployment; update/repair validates before pulling images or changing the stack and restores the original .env if validation fails.
   - Negative tests cover empty/duplicate keys, invalid ports/binds, duplicate listener ports and unsafe database identifiers. CI execution remains pending.
 
+- [~] P0.5 — Dependency and build evidence
+  - CI now runs a production dependency audit at high/critical severity, generates a CycloneDX SBOM for production Node dependencies, archives it as a workflow artifact, and builds the actual control-plane production Docker image.
+  - Pending workflow execution and artifact review. Container image vulnerability scanning, license-policy automation, secret scanning and digest pinning remain separate release gates.
+
 ## P1 — Host lifecycle safety
 
 - [~] P1.1 — Install, repair, update and rollback
