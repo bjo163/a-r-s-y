@@ -37,12 +37,12 @@ cd "$APP_DIR"
 chmod 0600 .env
 
 # Runtime gateway configuration must survive Git checkouts and updates.
-install -d -m 0755 /var/lib/arsy
-if [[ ! -f $STATE_DIR/Caddyfile ]]; then
-  install -m 0644 "$APP_DIR/Caddyfile" $STATE_DIR/Caddyfile
+install -d -m 0755 "$STATE_DIR"
+if [[ ! -f "$STATE_DIR/Caddyfile" ]]; then
+  install -m 0644 "$APP_DIR/Caddyfile" "$STATE_DIR/Caddyfile"
 fi
 
-OLD_SHA="$(cat $STATE_DIR/deployed-sha 2>/dev/null || true)"
+OLD_SHA="$(cat "$STATE_DIR/deployed-sha" 2>/dev/null || true)"
 
 ensure_env() {
   local key="$1" value="$2"
@@ -134,9 +134,13 @@ compose_up || rollback "Compose deployment failed."
 
 wait_for_health || rollback "Health check failed after deployment."
 
-printf '%s\n' "$TARGET_SHA" > $STATE_DIR/deployed-sha.tmp
-install -m 0444 -o root -g root $STATE_DIR/deployed-sha.tmp $STATE_DIR/deployed-sha
-rm -f $STATE_DIR/deployed-sha.tmp
+printf '%s\n' "$TARGET_SHA" > "$STATE_DIR/deployed-sha.tmp"
+if [[ "$TEST_MODE" == "1" ]]; then
+  install -m 0444 "$STATE_DIR/deployed-sha.tmp" "$STATE_DIR/deployed-sha"
+else
+  install -m 0444 -o root -g root "$STATE_DIR/deployed-sha.tmp" "$STATE_DIR/deployed-sha"
+fi
+rm -f "$STATE_DIR/deployed-sha.tmp"
 
 install -m 0755 scripts/arsy-deploy.sh "$HOST_BIN_DIR/arsy-deploy"
 install -m 0755 scripts/arsy-update.sh "$HOST_BIN_DIR/arsy-update"

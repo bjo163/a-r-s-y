@@ -68,7 +68,8 @@ run_deploy(){
     ARSY_APP_DIR="$dir/app" ARSY_STATE_DIR="$dir/state" ARSY_LOG_DIR="$dir/log" \
     ARSY_DEPLOY_LOCK_FILE="$dir/lock/deploy.lock" ARSY_HOST_BIN_DIR="$dir/hostbin" \
     MOCK_DOCKER_LOG="$dir/docker.log" MOCK_UP_MARKER="$dir/up.marker" \
-    MOCK_HEALTH_MARKER="$dir/health.marker"     ARSY_DEPLOY_HEALTH_ATTEMPTS=1 ARSY_DEPLOY_HEALTH_INTERVAL=0 $extra \
+    MOCK_HEALTH_MARKER="$dir/health.marker" \
+    ARSY_DEPLOY_HEALTH_ATTEMPTS=1 ARSY_DEPLOY_HEALTH_INTERVAL=0 $extra \
     bash "$ROOT/scripts/arsy-deploy.sh" "$TARGET_SHA"
 }
 
