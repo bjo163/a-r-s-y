@@ -32,7 +32,7 @@ set_env(){
   else
     cat "$ENV_FILE" > "$tmp"; printf '%s=%s\n' "$key" "$value" >> "$tmp"
   fi
-  cat "$tmp" > "$ENV_FILE"; rm -f "$tmp"; chmod 0600 "$ENV_FILE"
+  chmod 0600 "$tmp"; mv -f "$tmp" "$ENV_FILE"; chmod 0600 "$ENV_FILE"
 }
 if [[ "$MODE" == "proxy" ]]; then
   log "Existing reverse proxy mode selected."
@@ -60,7 +60,9 @@ EOF
   exit 0
 fi
 
-command -v ss >/dev/null 2>&1 || apt-get install -y iproute2
+command -v ss >/dev/null 2>&1 || die "The ss command is required (install iproute2 first). No host changes were made."
+command -v curl >/dev/null 2>&1 || die "curl is required. No host changes were made."
+command -v getent >/dev/null 2>&1 || die "getent is required. No host changes were made."
 for port in 80 443; do
   if ss -ltn "( sport = :$port )" | grep -q LISTEN; then
     die "TCP port $port is already in use. Nothing changed. Use existing-proxy mode or free the port deliberately."
@@ -74,6 +76,13 @@ IFS=. read -r oct1 oct2 oct3 oct4 <<< "$IPV4"
 for octet in "$oct1" "$oct2" "$oct3" "$oct4"; do
   (( 10#$octet <= 255 )) || die "Invalid IPv4 address: $IPV4"
 done
+if (( 10#$oct1 == 0 || 10#$oct1 == 10 || 10#$oct1 == 127 || 10#$oct1 >= 224 )) || \
+   (( 10#$oct1 == 169 && 10#$oct2 == 254 )) || \
+   (( 10#$oct1 == 172 && 10#$oct2 >= 16 && 10#$oct2 <= 31 )) || \
+   (( 10#$oct1 == 192 && 10#$oct2 == 168 )) || \
+   (( 10#$oct1 == 100 && 10#$oct2 >= 64 && 10#$oct2 <= 127 )); then
+  die "The target must be a globally routable IPv4 address, not a private, link-local, loopback, shared, or reserved address."
+fi
 DNS_IPS="$(getent ahostsv4 "$HOSTNAME" | awk '{print $1}' | sort -u | tr '\n' ' ')"
 [[ -n "$DNS_IPS" ]] || die "No public A record found for $HOSTNAME. Create A $HOSTNAME -> $IPV4 and retry."
 grep -qw "$IPV4" <<< "$DNS_IPS" || die "DNS A record ($DNS_IPS) does not include expected VPS IPv4 ($IPV4). Nothing changed."
@@ -90,7 +99,33 @@ read -r -p "Apply these changes now? [y/N] " answer
 BACKUP="$APP_DIR/.domain-backup-$(date +%Y%m%d%H%M%S)"
 mkdir -m 0700 "$BACKUP"
 cp -a "$ENV_FILE" "$CADDY_FILE" "$BACKUP/"
-rollback(){ cp -a "$BACKUP/.env" "$ENV_FILE"; cp -a "$BACKUP/Caddyfile" "$CADDY_FILE"; (cd "$APP_DIR" && docker compose up -d gateway app) || true; }
+ROLLBACK_DONE=0
+rollback(){
+  [[ "$ROLLBACK_DONE" -eq 0 ]] || return 0
+  ROLLBACK_DONE=1
+  trap - ERR
+  set +e
+  cp -a "$BACKUP/.env" "$ENV_FILE"
+  cp -a "$BACKUP/Caddyfile" "$CADDY_FILE"
+  (cd "$APP_DIR" && docker compose up -d gateway app)
+  local result=$?
+  if [[ "$result" -eq 0 ]]; then
+    log "Previous private/domain configuration restored."
+  else
+    log "CRITICAL: automatic rollback could not fully restore the stack. Keep the backup at $BACKUP and inspect Docker Compose logs."
+  fi
+  return "$result"
+}
+on_error(){
+  local status="$1" line="$2" command="$3"
+  trap - ERR
+  if [[ "$ROLLBACK_DONE" -eq 0 ]]; then
+    log "Unexpected failure at line $line while running: $command"
+    rollback || true
+  fi
+  exit "$status"
+}
+trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
 cat > "$CADDY_FILE" <<EOF
 $HOSTNAME {
     encode zstd gzip
