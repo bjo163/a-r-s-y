@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS arsy_sessions (
   revoked_at TIMESTAMPTZ
 );
 
+ALTER TABLE arsy_sessions ALTER COLUMN csrf_token TYPE VARCHAR(128);
+
 CREATE INDEX IF NOT EXISTS arsy_sessions_expiry_idx
   ON arsy_sessions (expires_at);
 
