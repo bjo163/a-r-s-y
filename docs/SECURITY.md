@@ -12,24 +12,23 @@ Proposed project licensing:
 
 ## Current VPS controls
 
-- Operator SSH uses public-key authentication.
-- GitHub deploy access uses a dedicated user with an authorized-key forced command.
-- The deploy user is not a member of the Docker group.
-- The deploy user has passwordless sudo only for /usr/local/sbin/arsy-deploy.
-- SSH host-key checking in Actions is strict and uses pinned known_hosts.
-- The HTTP gateway binds to 127.0.0.1 by default.
-- The installer does not rewrite SSH daemon or firewall configuration.
+- Operator access continues to use the VPS owner's existing SSH policy.
+- No GitHub deploy key, remote deploy user, or deploy SSH secret is required.
+- The web gateway binds to 127.0.0.1 by default.
+- The installer does not rewrite sshd or firewall policy.
 - .env is excluded from Git and set to mode 0600 by the installer.
+- Updates require an explicit operator confirmation.
+- The browser does not receive root credentials or the Docker socket.
 
 ## Before customer beta
 
 - Implement organization/project authorization tests on every API resource.
 - Use MFA for operators and scoped, revocable API keys for automation.
 - Keep database, queue, metrics, and admin ports private.
-- Add rate limiting, abuse reporting, retention and suspension runbooks.
+- Add rate limiting, abuse reporting, retention, and suspension runbooks.
 - Encrypt off-site backups and complete restore drills.
 - Generate an SPDX or CycloneDX SBOM for each release.
-- Scan source, dependencies and images; document CVE triage and patch SLAs.
+- Scan source, dependencies, and images; document CVE triage and patch SLAs.
 - Never log credentials, tokens, customer payloads, or private keys.
-- Do not place the Docker socket in the customer-facing API or portal.
-- Do not run untrusted customer code in the control-plane trust boundary.
+- Do not place the Docker socket in a customer-facing API or portal.
+- Do not run untrusted customer workloads in the control-plane trust boundary.
