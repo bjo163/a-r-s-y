@@ -10,6 +10,12 @@ die() { printf '\n[ARSY][ERROR] %s\n' "$*" >&2; exit 1; }
 [[ -f /etc/os-release ]] || die "/etc/os-release not found."
 . /etc/os-release
 
+ARCH="$(dpkg --print-architecture)"
+case "$ARCH" in
+  amd64|arm64) ;;
+  *) die "Unsupported architecture: $ARCH. Supported architectures: amd64 and arm64." ;;
+esac
+
 case "${ID:-}" in
   ubuntu)
     [[ "${VERSION_ID%%.*}" -ge 22 ]] || die "Ubuntu 22.04 or newer is required."
@@ -35,7 +41,7 @@ fi
 
 log "Preflight summary"
 printf '  OS             %s %s\n' "$PRETTY_NAME" "${VERSION_ID:-}"
-printf '  Architecture   %s\n' "$(dpkg --print-architecture)"
+printf '  Architecture   %s\n' "$ARCH"
 printf '  Hostname       %s\n' "$(hostname -f 2>/dev/null || hostname)"
 printf '  CPU cores      %s\n' "$(nproc)"
 printf '  Memory         %s\n' "$(awk '/MemTotal/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)"
@@ -124,6 +130,7 @@ ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
 ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
 ensure_env ARSY_COOKIE_SECURE "false"
 chmod 0600 .env
+bash scripts/arsy-config-validate.sh .env
 
 install -d -m 0750 /var/log/arsy
 install -d -m 0755 /var/lib/arsy
@@ -133,6 +140,7 @@ install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
 install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
+install -m 0755 scripts/arsy-config-validate.sh /usr/local/sbin/arsy-config-validate
 install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
 install -m 0755 scripts/arsy-backup.sh /usr/local/sbin/arsy-backup
 install -m 0755 scripts/arsy-restore-drill.sh /usr/local/sbin/arsy-restore-drill

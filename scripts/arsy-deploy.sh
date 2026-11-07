@@ -159,6 +159,10 @@ ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
 ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
 ensure_env ARSY_COOKIE_SECURE "false"
 
+if ! bash "$APP_DIR/scripts/arsy-config-validate.sh" "$APP_DIR/.env"; then
+  rollback "Environment configuration validation failed."
+fi
+
 log "Pulling gateway and database images."
 compose pull gateway || rollback "Gateway image pull failed."
 if compose config --services | grep -qx 'db'; then
@@ -183,6 +187,7 @@ install -m 0755 scripts/arsy-update.sh "$HOST_BIN_DIR/arsy-update"
 install -m 0755 scripts/arsy-doctor.sh "$HOST_BIN_DIR/arsy-doctor"
 install -m 0755 scripts/arsy-domain.sh "$HOST_BIN_DIR/arsy-domain"
 install -m 0755 scripts/arsy-env-migrate.sh "$HOST_BIN_DIR/arsy-env-migrate"
+install -m 0755 scripts/arsy-config-validate.sh "$HOST_BIN_DIR/arsy-config-validate"
 install -m 0755 scripts/arsy-network.sh "$HOST_BIN_DIR/arsy-network.sh"
 install -m 0755 scripts/arsy-backup.sh "$HOST_BIN_DIR/arsy-backup"
 install -m 0755 scripts/arsy-restore-drill.sh "$HOST_BIN_DIR/arsy-restore-drill"

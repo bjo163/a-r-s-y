@@ -31,7 +31,7 @@ less /tmp/arsy-install.sh
 sudo bash /tmp/arsy-install.sh
 ```
 
-The installer previews host information and asks for confirmation, installs missing Docker prerequisites, creates secrets, and starts PostgreSQL + web app + private gateway. It does not change firewall or SSH settings or open public ports.
+The installer previews host information and asks for confirmation, validates the host architecture and deployment environment, installs missing Docker prerequisites, creates secrets, and starts PostgreSQL + web app + private gateway. It does not change firewall or SSH settings or open public ports.
 
 Open the panel privately through SSH:
 
@@ -61,6 +61,7 @@ The Web profile does not automatically change DNS, firewall, SSH, or public list
 ```bash
 sudo arsy-update
 sudo arsy-doctor
+sudo arsy-config-validate /opt/arsy/.env
 ```
 
 ## Documentation and local AI handoff

@@ -3,7 +3,7 @@
 ## Supported host target
 
 - Ubuntu Server 22.04+ or Debian 12+.
-- AMD64 or ARM64.
+- AMD64 or ARM64 only.
 - Root/sudo required.
 - Planning recommendation: 8 vCPU, 16 GB RAM, 200 GB NVMe. Smaller dev hosts may work but need testing.
 
@@ -16,13 +16,14 @@ sudo bash /tmp/arsy-install.sh
 ```
 
 The installer:
-- Prints host/OS/architecture/resource/Docker/listener preflight information.
+- Prints host/OS/architecture/resource/Docker/listener preflight information and rejects architectures other than AMD64/ARM64.
 - Requires interactive confirmation; non-interactive execution requires explicit `ARSY_INSTALL_CONFIRM=1`.
 - Installs basic tools and configures the official Docker APT repository only when Docker or Compose is missing.
 - Installs only the Compose plugin when Docker already exists and only Compose is missing.
 - Clones/fetches A-R-S-Y, creates secrets, and stores them in `/opt/arsy/.env` (mode 0600).
+- Validates required settings, rejects empty or duplicate managed keys, checks PostgreSQL identifiers and listener port/bind values before deployment.
 - Starts PostgreSQL, Fastify app, and Caddy gateway; waits for health.
-- Installs `arsy-update`, `arsy-doctor`, `arsy-domain`, environment migration, network validation, backup, and restore-drill host commands.
+- Installs `arsy-update`, `arsy-doctor`, `arsy-domain`, environment/config validation, network validation, backup, and restore-drill host commands.
 
 The installer does not edit host firewall rules or SSH daemon settings. It does not open public ports. Existing environment values and database volume must be preserved during repair/update.
 
@@ -109,6 +110,7 @@ Never treat a push, merge, release, or detection as deployment authorization.
 ```bash
 sudo bash /opt/arsy/install.sh --repair
 sudo arsy-doctor
+sudo arsy-config-validate /opt/arsy/.env
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml ps
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f app
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f db

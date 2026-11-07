@@ -10,7 +10,7 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Latest main commit checked: 0e9041e. Actions run 42368111729 is queued; its validate job has runner_id=0 and no executed steps. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
+  - Latest main commit checked: 9bf2d20. Actions run 42370496335 is pending; its validate job is queued with runner_id=0 and no executed steps. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
   - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
   - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
@@ -24,6 +24,11 @@ Status key:
   - Added disposable PostgreSQL 17 coverage for health, setup-once, login, cookie attributes, repeated setup, invalid credentials, CSRF, Origin, timezone and IPv4 validation, DNS diagnostic, pre-save DNS persistence, onboarding profile, dashboard readiness, exact-SHA update approval/audit, logout and session expiry.
   - Database name is hard-limited to arsy_test; tests clean their tables and child process.
   - Pending actual CI execution and failure-log review. Never run against a live database.
+
+- [~] P0.4 — Fail-closed deployment environment validation
+  - Added a dedicated validator for required/unique .env keys, non-empty secrets, PostgreSQL identifiers, listener port ranges/uniqueness, supported bind addresses and cookie mode.
+  - Installer validates configuration before deployment; update/repair validates before pulling images or changing the stack and restores the original .env if validation fails.
+  - Negative tests cover empty/duplicate keys, invalid ports/binds, duplicate listener ports and unsafe database identifiers. CI execution remains pending.
 
 ## P1 — Host lifecycle safety
 
@@ -74,7 +79,7 @@ Status key:
 - [x] Added docs/INDEX.md as the canonical document map and source-of-truth precedence.
 - [~] Cross-document links have a CI checker and are included in CI; workflow run is pending.
 - [x] Roadmap milestones declare entry and exit gates.
-- [~] Handoff verification snapshot is synchronized through code commit 0e9041e; refresh again after new CI or VPS evidence.
+- [~] Handoff verification snapshot is synchronized through main commit 9bf2d20; refresh again after new CI or VPS evidence.
 
 ## Explicitly not next
 
