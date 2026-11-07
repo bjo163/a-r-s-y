@@ -10,8 +10,8 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Latest main commit before release-hardening branch: 9bf2d20. Main run 42370496335 and PR runs 42372320448 / 42372324516 were queued with no runner assignment and no executed steps at last observation. This is neither a pass nor a test failure. Re-check the newest run for the latest branch SHA; earlier runs may be cancelled by the workflow concurrency group when a new commit is pushed. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
-  - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
+  - Main base SHA: 9bf2d20. Latest observed branch run before concurrency deduplication: 42393572983 on b239272; job validate was queued with no runner assignment or steps. GitHub Status showed Actions operational and no Nov 7 incident, so the exact cause is still unconfirmed and may be repository/account-specific. The workflow now uses the PR head branch as its concurrency key so push and PR events for the same branch do not consume duplicate runner slots. Re-check the newest run after this change; this is not a pass or test failure.
+  - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read. Push and PR events now share a branch-scoped concurrency group to avoid duplicate runs.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
   - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
   - Complete only when a current-main run reaches a terminal result and its actual job steps/logs are reviewed.
