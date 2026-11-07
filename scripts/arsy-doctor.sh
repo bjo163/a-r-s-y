@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
+PORT="18080"
+if [[ -f "$APP_DIR/.env" ]]; then
+  PORT="$(sed -n 's/^ARSY_HTTP_PORT=//p' "$APP_DIR/.env" | tail -n1 | tr -d '\r')"
+  PORT="${PORT:-18080}"
+fi
+ok() { printf '  [OK]   %s\n' "$*"; }
+warn() { printf '  [WARN] %s\n' "$*"; }
+fail=0
+printf '\nA-R-S-Y Core Node doctor\n\n'
+if command -v docker >/dev/null 2>&1; then ok "Docker: $(docker --version)"; else warn "Docker CLI is missing"; fail=1; fi
+if docker compose version >/dev/null 2>&1; then ok "Compose: $(docker compose version --short)"; else warn "Docker Compose v2 plugin is missing"; fail=1; fi
+if docker info >/dev/null 2>&1; then ok "Docker daemon is responding"; else warn "Docker daemon is unavailable"; fail=1; fi
+if curl -fsS --connect-timeout 2 --max-time 4 "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then ok "Local gateway health check passed on 127.0.0.1:${PORT}"; else warn "Gateway health check failed on 127.0.0.1:${PORT}"; fail=1; fi
+if [[ -d "$APP_DIR/.git" ]]; then ok "Repository: $(git -C "$APP_DIR" rev-parse --short HEAD)"; else warn "Repository checkout not found at $APP_DIR"; fail=1; fi
+if [[ -f /var/lib/arsy/deployed-sha ]]; then ok "Last deployed SHA: $(cat /var/lib/arsy/deployed-sha)"; else warn "No successful deployment record found"; fi
+printf '\nDisk: '; df -h "$APP_DIR" 2>/dev/null | tail -n1 || true
+printf 'Memory: '; free -h 2>/dev/null | awk '/^Mem:/ {print $3 " used / " $2 " total"}' || true
+printf '\n'
+exit "$fail"
