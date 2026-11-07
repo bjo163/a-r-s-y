@@ -25,7 +25,60 @@
   <p>A-R-S-Y is the open infrastructure control plane inspired by the MoonWitness coordination-hub narrative. This first node confirms the host, deployment pipeline, and health endpoint.</p>
   <div class="rule"></div>
   <div class="status"><span class="dot"></span> Core gateway healthy</div>
+  <section id="update" class="update" aria-live="polite">
+    <strong>UPDATE AVAILABLE</strong>
+    <p id="update-copy">A newer A-R-S-Y version is available.</p>
+    <div class="actions">
+      <button id="update-yes" type="button">Review update</button>
+      <button id="update-later" class="secondary" type="button">Later</button>
+    </div>
+    <small id="update-note">No changes will be applied without your approval.</small>
+  </section>
   <div class="foot" style="margin-top:38px"><span>Build. Route. Protect. Own.</span><strong>FOUNDATION / PRE-ALPHA</strong></div>
+  <script>
+    (async function checkForUpdate() {
+      const panel = document.getElementById("update");
+      const copy = document.getElementById("update-copy");
+      const note = document.getElementById("update-note");
+      const yes = document.getElementById("update-yes");
+      const later = document.getElementById("update-later");
+      let installed = "";
+      let latest = "";
+      try {
+        const localResponse = await fetch("/version.json", { cache: "no-store" });
+        if (!localResponse.ok) return;
+        const local = await localResponse.json();
+        installed = (local.current_sha || "").toLowerCase();
+        if (!/^[0-9a-f]{40}$/.test(installed)) return;
+        const remoteResponse = await fetch("https://api.github.com/repos/bjo163/a-r-s-y/commits/main", {
+          cache: "no-store",
+          headers: { Accept: "application/vnd.github+json" }
+        });
+        if (!remoteResponse.ok) return;
+        const remote = await remoteResponse.json();
+        latest = (remote.sha || "").toLowerCase();
+        if (!/^[0-9a-f]{40}$/.test(latest) || latest === installed) return;
+        copy.textContent = "Installed " + installed.slice(0, 12) + " · Available " + latest.slice(0, 12) + ". Do you want to update now?";
+        panel.classList.add("visible");
+        yes.addEventListener("click", () => {
+          const approved = window.confirm("A-R-S-Y update " + latest.slice(0, 12) + " is available. Approve this update?");
+          if (!approved) {
+            note.textContent = "Update skipped. Your current version remains installed.";
+            panel.classList.remove("visible");
+            return;
+          }
+          note.textContent = "Approval received. For this foundation build, run sudo arsy-update on the VPS to apply the update. The one-click Core API action will be added with the authenticated app backend.";
+          yes.disabled = true;
+          yes.textContent = "Approved";
+        });
+        later.addEventListener("click", () => {
+          panel.classList.remove("visible");
+        });
+      } catch (_) {
+        // A failed or rate-limited update check must never affect the running service.
+      }
+    })();
+  </script>
 </main>
 </body>
 </html>
