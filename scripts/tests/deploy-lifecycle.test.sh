@@ -95,6 +95,33 @@ cmp -s "$dir/state/Caddyfile" "$dir/caddy.before" || fail "runtime Caddyfile cha
 grep -q 'Previous stack restored and health-checked' "$dir/output.log" || fail "rollback health evidence missing"
 if grep -q 'down .*-[vV]' "$dir/docker.log"; then fail "persistent volumes must never be removed"; fi
 
+make_case legacy-migration-success
+dir="$TMP/legacy-migration-success"
+cat > "$dir/app/.env" <<'ENV'
+ARSY_HTTP_BIND=0.0.0.0
+ARSY_HTTP_PORT=80
+ARSY_HTTPS_BIND=0.0.0.0
+ARSY_HTTPS_PORT=443
+POSTGRES_DB=arsy
+POSTGRES_USER=arsy
+POSTGRES_PASSWORD=preserve-this-db-password
+ARSY_SETUP_TOKEN=preserve-this-bootstrap-token
+ARSY_SESSION_SECRET=preserve-this-session-secret
+ARSY_COOKIE_SECURE=false
+TZ=Asia/Jakarta
+ENV
+chmod 0600 "$dir/app/.env"
+run_deploy "$dir" > "$dir/output.log" 2>&1 || fail "legacy migration success deploy failed"
+grep -q '^ARSY_HTTP_PORT=18080$' "$dir/app/.env" || fail "legacy private listener port was not migrated"
+grep -q '^ARSY_PUBLIC_HTTP_PORT=80$' "$dir/app/.env" || fail "legacy public HTTP port was not preserved"
+grep -q '^ARSY_PUBLIC_HTTPS_PORT=443$' "$dir/app/.env" || fail "legacy public HTTPS port was not preserved"
+grep -q '^ARSY_PUBLIC_HTTP_BIND=127.0.0.1$' "$dir/app/.env" || fail "legacy wildcard HTTP bind was exposed"
+grep -q '^ARSY_PUBLIC_HTTPS_BIND=127.0.0.1$' "$dir/app/.env" || fail "legacy wildcard HTTPS bind was exposed"
+grep -q '^ARSY_PROXY_HTTP_PORT=18082$' "$dir/app/.env" || fail "dedicated proxy port missing after migration"
+grep -q '^POSTGRES_PASSWORD=preserve-this-db-password$' "$dir/app/.env" || fail "PostgreSQL credential changed during migration"
+grep -q '^ARSY_SETUP_TOKEN=preserve-this-bootstrap-token$' "$dir/app/.env" || fail "bootstrap credential changed during migration"
+[[ "$(stat -c '%a' "$dir/app/.env")" == "600" ]] || fail "migrated .env mode is not 0600"
+
 make_case legacy-migration-rollback
 dir="$TMP/legacy-migration-rollback"
 cat > "$dir/app/.env" <<'ENV'

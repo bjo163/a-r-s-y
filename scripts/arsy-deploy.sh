@@ -72,20 +72,6 @@ ensure_env() {
   fi
 }
 
-ensure_env ARSY_HTTP_PORT "18080"
-ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
-ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
-ensure_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
-ensure_env ARSY_PUBLIC_HTTPS_PORT "18444"
-ensure_env ARSY_PROXY_HTTP_PORT "18082"
-ensure_env TZ "Asia/Jakarta"
-ensure_env POSTGRES_DB "arsy"
-ensure_env POSTGRES_USER "arsy"
-ensure_env POSTGRES_PASSWORD "$(openssl rand -hex 32)"
-ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
-ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
-ensure_env ARSY_COOKIE_SECURE "false"
-
 log "Fetching approved source revision."
 git fetch --prune origin main
 git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null || die "Target commit is not available."
@@ -157,6 +143,21 @@ rollback() {
 if ! bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"; then
   rollback "Environment migration failed."
 fi
+
+# Defaults are intentionally added only after the legacy layout has been migrated.
+ensure_env ARSY_HTTP_PORT "18080"
+ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
+ensure_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTPS_PORT "18444"
+ensure_env ARSY_PROXY_HTTP_PORT "18082"
+ensure_env TZ "Asia/Jakarta"
+ensure_env POSTGRES_DB "arsy"
+ensure_env POSTGRES_USER "arsy"
+ensure_env POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
+ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
+ensure_env ARSY_COOKIE_SECURE "false"
 
 log "Pulling gateway and database images."
 compose pull gateway || rollback "Gateway image pull failed."
