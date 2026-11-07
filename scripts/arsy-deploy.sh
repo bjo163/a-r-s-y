@@ -145,6 +145,7 @@ if ! bash "$APP_DIR/scripts/arsy-env-migrate.sh" "$APP_DIR/.env"; then
 fi
 
 # Defaults are intentionally added only after the legacy layout has been migrated.
+ensure_env ARSY_ENV_LAYOUT_VERSION "2"
 ensure_env ARSY_HTTP_PORT "18080"
 ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
 ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
