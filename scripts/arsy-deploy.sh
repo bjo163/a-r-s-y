@@ -19,6 +19,7 @@ command -v openssl >/dev/null 2>&1 || die "openssl is not installed."
 
 install -d -m 0750 "$LOG_DIR" /run/lock
 install -d -m 0755 /var/lib/arsy
+chmod 0755 /var/lib/arsy
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another deployment is already running."
 exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
