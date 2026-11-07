@@ -14,17 +14,18 @@ Keep arsy_deploy private. Never commit it or paste it into an issue or pull requ
 
 ## 2. Install the public key on the VPS
 
-During initial install:
+Install the application first, then copy only the public key to the VPS. Never copy the private key to the server:
 
 ~~~bash
-sudo ARSY_DEPLOY_PUBLIC_KEY="$(cat ./arsy_deploy.pub)" bash install.sh
+# Run on your workstation:
+scp ./arsy_deploy.pub YOUR_OPERATOR_USER@YOUR_VPS_HOST:/tmp/arsy_deploy.pub
+
+# Run on the VPS:
+sudo ARSY_DEPLOY_PUBLIC_KEY="$(cat /tmp/arsy_deploy.pub)" bash /opt/arsy/install.sh --configure-deploy-key
+sudo rm -f /tmp/arsy_deploy.pub
 ~~~
 
-Or after a normal install:
-
-~~~bash
-sudo ARSY_DEPLOY_PUBLIC_KEY="$(cat ./arsy_deploy.pub)" bash /opt/arsy/install.sh --configure-deploy-key
-~~~
+You may also pass the public key during the initial install when the .pub file is already present on the VPS. The private key remains on your workstation and is added only to GitHub Actions secrets.
 
 The installer creates a dedicated arsy-deploy user. Its key is restricted to a forced command, with PTY, agent forwarding, and port forwarding disabled. The forced command accepts only deploy plus a 40-character commit SHA. The account is not added to the Docker group and receives passwordless sudo only for the root-owned deployment script.
 
@@ -53,7 +54,8 @@ Repository → Settings → Secrets and variables → Actions → New repository
 | ARSY_DEPLOY_HOST | VPS public IP or DNS hostname |
 | ARSY_DEPLOY_USER | arsy-deploy |
 | ARSY_DEPLOY_SSH_KEY | Full private key file contents from arsy_deploy |
-| ARSY_DEPLOY_KNOWN_HOSTS | Verified pinned host-key entry |
+| ARSY_DEPLOY_KNOWN_HOSTS | Verified pinned host-key entry (for non-default port, use the `[host]:port` known_hosts format) |
+| ARSY_DEPLOY_PORT | Optional SSH port; defaults to `22` |
 
 Never put a private key in repository variables, tracked files, .env, or workflow YAML.
 
