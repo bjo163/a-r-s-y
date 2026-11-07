@@ -1,0 +1,13 @@
+:80 {
+    @health path /healthz
+    respond @health "healthy" 200
+    root * /srv
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Frame-Options DENY
+        -Server
+    }
+    file_server
+}
