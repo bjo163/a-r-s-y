@@ -114,6 +114,7 @@ rm -f /var/lib/arsy/deployed-sha.tmp
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
+install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
 compose ps
