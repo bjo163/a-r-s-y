@@ -1,0 +1,42 @@
+name: A-R-S-Y CI
+
+on:
+  push:
+    branches: [main, dev, "feat/**", "fix/**", "chore/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arsy-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install.sh
+          bash -n scripts/arsy-deploy.sh
+          bash -n scripts/arsy-update.sh
+          bash -n scripts/arsy-doctor.sh
+
+      - name: Check required repository files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s README.md
+          test -s compose.yaml
+          test -s Caddyfile
+          test -s docs/00-narrative-and-positioning.md
+          test -s docs/02-master-blueprint.md
+          test -s docs/UPDATE_POLICY.md
+          test -s site/index.html
