@@ -98,8 +98,11 @@ ensure_env() {
 }
 
 touch .env
-ensure_env ARSY_HTTP_BIND "127.0.0.1"
 ensure_env ARSY_HTTP_PORT "18080"
+ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
+ensure_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
+ensure_env ARSY_PUBLIC_HTTPS_PORT "18444"
 ensure_env TZ "Asia/Jakarta"
 ensure_env POSTGRES_DB "arsy"
 ensure_env POSTGRES_USER "arsy"

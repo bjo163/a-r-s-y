@@ -35,7 +35,7 @@ sudo bash /tmp/arsy-install.sh
 
 The installer installs Docker Engine/Compose when needed, creates /opt/arsy, generates database/session/setup secrets, starts PostgreSQL + the web app + the private gateway, and runs a health check. Existing .env values are preserved.
 
-The gateway listens on 127.0.0.1:18080; it does not take over public ports 80/443. Inspect the app from your workstation through SSH:
+The private gateway listens on 127.0.0.1:18080; it does not take over public ports 80/443. After enabling managed HTTPS, the private SSH-tunnel listener remains available for recovery. Inspect the app from your workstation through SSH:
 
 ~~~bash
 ssh -L 18080:127.0.0.1:18080 YOUR_OPERATOR_USER@YOUR_VPS_HOST

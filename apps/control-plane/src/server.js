@@ -459,14 +459,8 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   const environment = clean(b.environment, 20), timezone = clean(b.timezone, 64), language = clean(b.language, 2);
   const accessMode = clean(b.accessMode, 20), hostname = clean(b.hostname, 253).toLowerCase();
   const targetIpv4 = clean(b.targetIpv4, 45), proxyType = clean(b.proxyType, 20);
-  const validEmail = contactEmail.length <= 254 && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail);
-  let validTimezone = false;
-  try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(); validTimezone = true; } catch {}
-  if (workspaceName.length < 2 || installationName.length < 2 || nodeName.length < 2 || !validEmail) {
+  if (workspaceName.length < 2 || installationName.length < 2 || nodeName.length < 2 || !contactEmail) {
     return reply.code(400).send({ ok: false, error: 'Workspace, installation, node, dan email kontak wajib valid.' });
-  }
-  if (!validTimezone) {
-    return reply.code(400).send({ ok: false, error: 'Timezone tidak dikenal. Gunakan nama zona IANA, contoh Asia/Jakarta.' });
   }
   if (!['personal','lab','staging','production'].includes(environment) || !['id','en'].includes(language) || !['private','public','proxy'].includes(accessMode)) {
     return reply.code(400).send({ ok: false, error: 'Pilihan konfigurasi tidak valid.' });

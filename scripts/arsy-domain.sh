@@ -92,6 +92,7 @@ log "Domain: $HOSTNAME"
 log "DNS A record: $DNS_IPS"
 log "Target IPv4: $IPV4"
 log "This will bind public TCP 80/443, configure Caddy automatic HTTPS, and enable Secure cookies."
+log "Private recovery access on 127.0.0.1:18080 will remain available through SSH tunnel."
 log "Your provider firewall/security group must allow inbound TCP 80 and 443."
 read -r -p "Apply these changes now? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || die "Cancelled. No changes made."
@@ -131,11 +132,15 @@ $HOSTNAME {
     encode zstd gzip
     reverse_proxy app:3000
 }
+
+:8080 {
+    reverse_proxy app:3000
+}
 EOF
-set_env ARSY_HTTP_BIND "0.0.0.0"
-set_env ARSY_HTTP_PORT "80"
-set_env ARSY_HTTPS_BIND "0.0.0.0"
-set_env ARSY_HTTPS_PORT "443"
+set_env ARSY_PUBLIC_HTTP_BIND "0.0.0.0"
+set_env ARSY_PUBLIC_HTTP_PORT "80"
+set_env ARSY_PUBLIC_HTTPS_BIND "0.0.0.0"
+set_env ARSY_PUBLIC_HTTPS_PORT "443"
 set_env ARSY_COOKIE_SECURE "true"
 cd "$APP_DIR"
 if ! docker compose config -q; then rollback; die "Compose validation failed. Previous config restored."; fi
@@ -159,5 +164,5 @@ if [[ "$healthy" -ne 1 ]]; then
   die "HTTPS health check failed after 180 seconds. Previous configuration restored. Check DNS, provider firewall (TCP 80/443), and Caddy logs."
 fi
 log "HTTPS endpoint is responding: https://$HOSTNAME"
-log "Private recovery access remains available through SSH tunnel if the port mapping is unchanged."
+log "Private recovery access remains available: ssh -L 18080:127.0.0.1:18080 USER@VPS, then open http://127.0.0.1:18080."
 log "Backup of previous configuration: $BACKUP"
