@@ -10,7 +10,7 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Current main run for code commit 828a486: run 42367315230 is queued. The validate job has no assigned runner (runner_id=null) and no executed steps.
+  - Latest implementation commit checked: 9f6d647. Its Actions run 42368016667 is queued; the validate job has no assigned runner (runner_id=null) and no executed steps. Recheck the newest run on current main before making any pass/fail claim.
   - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
   - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
@@ -27,14 +27,14 @@ Status key:
 ## P1 — Host lifecycle safety
 
 - [~] P1.1 — Install, repair, update and rollback
-  - Added isolated deploy lifecycle tests for update, Compose-start failure rollback, health-check rollback, same-SHA repair/redeploy, preservation of .env/runtime Caddyfile/deployed SHA, and no persistent-volume deletion.
+  - Added isolated deploy lifecycle tests for update, Compose-start failure rollback, health-check rollback, same-SHA repair/redeploy, legacy migration success (80/443 are retained but wildcard binds stay loopback), exact .env restoration after failed deploy, runtime Caddyfile/deployed SHA preservation, and no persistent-volume deletion.
   - Pending CI run. Full initial installer mutation/failure path is not yet tested in a disposable VM. Real install/repair remains a VPS release gate.
 - [~] P1.2 — Safe legacy environment migration
   - Added idempotent, same-filesystem atomic migration for legacy ARSY_HTTP_* and ARSY_HTTPS_* layouts.
   - Retains configured ports but intentionally does not migrate old wildcard binds; new public binds remain 127.0.0.1 until explicit domain activation. Preserves secrets and .env mode 0600.
-  - Regression tests cover legacy wildcard layout, current-layout idempotency and secret preservation. Pending CI execution.
+  - Regression tests cover legacy wildcard layout, current-layout idempotency and secret preservation. Deploy migrates the untouched legacy layout before adding modern defaults; failure restores the exact pre-deploy .env. Pending CI execution.
 - [~] P1.3 — Domain helper failure matrix
-  - Added mocked tests for invalid hostname/IP, special-use/private IPv4, occupied port, missing A, mismatched A, AAAA, missing prerequisite, Compose config/start failure, HTTPS timeout, rollback-state preservation and successful activation.
+  - Added mocked tests for invalid hostname/IP, special-use/private IPv4, occupied port, missing A, mismatched A, AAAA, missing prerequisite, generated Caddyfile validation failure, Compose config/start failure, HTTPS timeout, rollback-state preservation and successful activation.
   - Private SSH recovery remains separate from public listeners; tests assert recovery and local-proxy listener configuration.
   - Pending CI execution and real external-network/VPS verification.
 - [~] P1.4 — Proxy trust and cookie security
@@ -49,7 +49,7 @@ Status key:
   - Web stores installation metadata and observes DNS only. Provider DNS and firewall remain operator-managed. Saving a profile does not activate a domain.
   - Private SSH tunnel remains the default/recovery path.
 - [~] P2.2 — Readiness and actionable diagnostics
-  - Dashboard distinguishes Control Plane response, Superadmin, saved profile, node identity, DNS observation, access mode and domain activation.
+  - Dashboard distinguishes Control Plane response, Superadmin, saved profile, node identity, DNS observation, access mode and domain activation. DNS resolver transient errors, no-record, mismatch and match states are shown separately.
   - DNS diagnostic is timestamped and retained when the matching profile is saved; changed hostname/target invalidates the prior result.
   - Manual/provider steps remain explicitly unverified. Pending CI integration and visual verification on a real browser/VPS.
 - [x] P2.3 — Language/timezone behavior
@@ -73,7 +73,7 @@ Status key:
 - [x] Added docs/INDEX.md as the canonical document map and source-of-truth precedence.
 - [~] Cross-document links have a CI checker and are included in CI; workflow run is pending.
 - [x] Roadmap milestones declare entry and exit gates.
-- [~] Handoff is updated for the implementation through code commit 828a486; refresh again after new CI or VPS evidence.
+- [~] Handoff is updated for implementation through code commit 9f6d647; refresh again after new CI or VPS evidence.
 
 ## Explicitly not next
 

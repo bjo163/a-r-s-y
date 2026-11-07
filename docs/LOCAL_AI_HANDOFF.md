@@ -28,7 +28,7 @@ A-R-S-Y is an open-source, customer-owned infrastructure control plane. It coord
 ### Access modes
 1. **Private (default):** SSH tunnel to `127.0.0.1:18080`. Keep this path available for recovery even after public domain activation.
 2. **Managed public domain:** user creates DNS A record to VPS IPv4 and allows inbound TCP 80/443 in provider firewall. User explicitly runs `sudo arsy-domain apply --hostname panel.example.com`; helper validates prerequisites, ports, DNS, and address, explains changes, asks confirmation, enables Caddy HTTPS, and performs a health check with rollback.
-3. **Existing reverse proxy:** keep A-R-S-Y on loopback and configure the user's proxy to `http://127.0.0.1:18080`. TLS terminates at that proxy. Do not take over public ports.
+3. **Existing reverse proxy:** keep A-R-S-Y on loopback and configure a same-host proxy to `http://127.0.0.1:18082`. The private SSH recovery listener remains separate at `127.0.0.1:18080`. TLS terminates at the existing proxy. Do not take over public ports.
 
 Current public domain helper is IPv4-only and rejects an AAAA result. Do not describe IPv6 domain activation as supported. Existing same-host reverse proxy uses 127.0.0.1:18082; private SSH recovery remains 127.0.0.1:18080.
 
@@ -88,9 +88,9 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 - `apps/control-plane/src/security.js`: password/session/input/security helpers.
 - `apps/control-plane/schema.sql`: current database schema and additive bootstrap DDL.
 - `apps/control-plane/public/`: browser JS and CSS.
-- `scripts/arsy-deploy.sh`: locked exact-SHA deployment, Compose validation/build/up, health check, best-effort source rollback.
+- `scripts/arsy-deploy.sh`: locked exact-SHA deployment, safe legacy env migration before defaults, exact `.env` backup/restore on failure, Compose validation/build/up, health check, source rollback and post-rollback health verification.
 - `scripts/arsy-update.sh`: update discovery and consent gate.
-- `scripts/arsy-domain.sh`: managed domain apply and existing proxy instructions.
+- `scripts/arsy-domain.sh`: managed domain apply and existing same-host proxy instructions; validates generated Caddy configuration before changing the running gateway and restores runtime config on failure.
 - `scripts/arsy-doctor.sh`: host and service diagnostic checks.
 - `.github/workflows/ci.yml`: Node tests, disposable PostgreSQL integration, Compose/Caddy validation, isolated shell regression tests and docs link check. It does not run a real VPS test or deploy.
 
@@ -104,8 +104,8 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 
 ### P1 — host lifecycle and ingress safety
 1. Safe legacy .env migration and tests exist; execute regression in CI and review first upgrade/repair on a real disposable host.
-2. Domain failure-matrix tests exist for validation, DNS, prerequisites, occupied ports, Compose failures and TLS timeout; execute them in CI. Real network and provider-firewall tests remain a release gate.
-3. Deploy lifecycle harness covers update, repair/redeploy, failed Compose start, failed health check, source rollback, and preservation of .env/Caddyfile/deployed SHA/no-volume-deletion. It does not yet emulate a full fresh install or a failure during first installation.
+2. Domain failure-matrix tests exist for validation, DNS, prerequisites, occupied ports, generated Caddyfile validation, Compose failures, TLS timeout and rollback; execute them in CI. Real network and provider-firewall tests remain a release gate.
+3. Deploy lifecycle harness covers update, repair/redeploy, legacy layout migration success, exact .env restoration after failed deployment, failed Compose start, failed health check, source rollback, and preservation of Caddyfile/deployed SHA/no-volume-deletion. It does not yet emulate a full fresh install or a failure during first installation.
 4. Proxy boundaries: SSH recovery is loopback port 18080; existing same-host reverse proxy uses loopback port 18082; Fastify trusts one immediate Caddy hop; the reverse proxy must overwrite X-Forwarded headers. Remote/multi-hop proxies are unsupported.
 5. Independently review installer prerequisites and supported Ubuntu/Debian host behavior before private beta.
 
