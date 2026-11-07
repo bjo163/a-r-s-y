@@ -18,7 +18,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS arsy_users_single_superadmin_uq
 CREATE TABLE IF NOT EXISTS arsy_sessions (
   token_hash CHAR(64) PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES arsy_users(id) ON DELETE CASCADE,
-  csrf_token CHAR(64) NOT NULL,
+  csrf_token VARCHAR(128) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL,
   revoked_at TIMESTAMPTZ
