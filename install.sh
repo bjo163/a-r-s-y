@@ -2,9 +2,9 @@
 set -Eeuo pipefail
 
 REPO_URL="https://github.com/bjo163/a-r-s-y.git"
-APP_DIR="\${ARSY_APP_DIR:-/opt/arsy}"
+APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
 DEPLOY_USER="arsy-deploy"
-PUBLIC_KEY="\${ARSY_DEPLOY_PUBLIC_KEY:-}"
+PUBLIC_KEY="${ARSY_DEPLOY_PUBLIC_KEY:-}"
 
 log() { printf '\n[ARSY] %s\n' "$*"; }
 die() { printf '\n[ARSY][ERROR] %s\n' "$*" >&2; exit 1; }
@@ -44,12 +44,12 @@ install_docker() {
   fi
 
   . /etc/os-release
-  local distro="\${ID:-}" codename="\${VERSION_CODENAME:-}"
-  [[ "$distro" == "ubuntu" || "$distro" == "debian" ]] || die "Unsupported Linux distribution: \${PRETTY_NAME:-unknown}. Use Ubuntu 22.04+ or Debian 12+."
+  local distro="${ID:-}" codename="${VERSION_CODENAME:-}"
+  [[ "$distro" == "ubuntu" || "$distro" == "debian" ]] || die "Unsupported Linux distribution: ${PRETTY_NAME:-unknown}. Use Ubuntu 22.04+ or Debian 12+."
   if [[ "$distro" == "ubuntu" ]]; then
-    [[ "\${VERSION_ID%%.*}" -ge 22 ]] || die "Ubuntu 22.04 or newer is required."
+    [[ "${VERSION_ID%%.*}" -ge 22 ]] || die "Ubuntu 22.04 or newer is required."
   else
-    [[ "\${VERSION_ID%%.*}" -ge 12 ]] || die "Debian 12 or newer is required."
+    [[ "${VERSION_ID%%.*}" -ge 12 ]] || die "Debian 12 or newer is required."
   fi
   [[ -n "$codename" ]] || die "Could not determine OS release codename."
 
@@ -86,7 +86,7 @@ configure_deploy_key_mode() {
 
 main() {
   require_root
-  if [[ "\${1:-}" == "--configure-deploy-key" ]]; then
+  if [[ "${1:-}" == "--configure-deploy-key" ]]; then
     configure_deploy_key_mode
     exit 0
   fi
@@ -108,9 +108,9 @@ main() {
   cd "$APP_DIR"
   [[ -f compose.yaml && -f .env.example && -f scripts/arsy-deploy.sh ]] || die "Repository is missing required bootstrap files."
   if [[ ! -f .env ]]; then
-    local http_bind="\${ARSY_HTTP_BIND:-127.0.0.1}"
-    local http_port="\${ARSY_HTTP_PORT:-18080}"
-    local timezone="\${TZ:-Asia/Jakarta}"
+    local http_bind="${ARSY_HTTP_BIND:-127.0.0.1}"
+    local http_port="${ARSY_HTTP_PORT:-18080}"
+    local timezone="${TZ:-Asia/Jakarta}"
     [[ "$http_port" =~ ^[0-9]{1,5}$ ]] && (( http_port >= 1 && http_port <= 65535 )) || die "ARSY_HTTP_PORT must be between 1 and 65535."
     printf 'ARSY_HTTP_BIND=%s\nARSY_HTTP_PORT=%s\nTZ=%s\n' "$http_bind" "$http_port" "$timezone" > .env
     chmod 0600 .env
@@ -135,8 +135,8 @@ main() {
   local port
   port="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1)"
   printf '\nA-R-S-Y Core Node bootstrap is installed.\n'
-  printf '  App directory : %s\n  Local health  : http://127.0.0.1:%s/healthz\n' "$APP_DIR" "\${port:-18080}"
-  printf '  Local portal  : http://127.0.0.1:%s/\n' "\${port:-18080}"
+  printf '  App directory : %s\n  Local health  : http://127.0.0.1:%s/healthz\n' "$APP_DIR" "${port:-18080}"
+  printf '  Local portal  : http://127.0.0.1:%s/\n' "${port:-18080}"
   printf '\nThe listener is loopback-only by default. Inspect through an SSH tunnel.\n'
   if [[ -z "$PUBLIC_KEY" ]]; then
     printf '\nAutomatic GitHub deployment is not enabled yet.\n'
