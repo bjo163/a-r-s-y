@@ -43,8 +43,18 @@ function csrfFromHtml(html) {
 }
 
 test('disposable PostgreSQL API lifecycle and security integration', { skip: !enabled }, async (t) => {
-  assert.equal(process.env.DB_NAME || 'arsy_test', 'arsy_test',
+  // This suite drops and recreates application tables. Fail closed before
+  // opening a connection unless every target selector identifies the
+  // dedicated loopback-only CI database.
+  const databaseName = process.env.DB_NAME || 'arsy_test';
+  const databaseHost = process.env.DB_HOST || '127.0.0.1';
+  const databaseUser = process.env.DB_USER || 'arsy_test';
+  assert.equal(databaseName, 'arsy_test',
     'integration tests refuse to run against a non-disposable database');
+  assert.ok(['127.0.0.1', '::1', 'localhost'].includes(databaseHost),
+    'integration tests may connect only to a loopback PostgreSQL host');
+  assert.equal(databaseUser, 'arsy_test',
+    'integration tests require the dedicated arsy_test database role');
   const work = await mkdtemp(join(tmpdir(), 'arsy-integration-'));
   const port = await freePort();
   const base = 'http://127.0.0.1:' + port;

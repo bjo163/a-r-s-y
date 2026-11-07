@@ -20,6 +20,7 @@ Status key:
   - No containers are deployed and no real credentials are used.
   - Pending actual CI execution and confirmation that malformed Compose fails the job.
 - [~] P0.3 — PostgreSQL integration and negative/security tests
+  - Added fail-closed target guard: integration suite requires DB_NAME=arsy_test, DB_USER=arsy_test and a loopback DB_HOST before any connection or destructive schema reset. CI execution is still pending.
   - Added disposable PostgreSQL 17 coverage for health, setup-once, login, cookie attributes, repeated setup, invalid credentials, CSRF, Origin, timezone and IPv4 validation, DNS diagnostic, pre-save DNS persistence, onboarding profile, dashboard readiness, exact-SHA update approval/audit, logout and session expiry.
   - Database name is hard-limited to arsy_test; tests clean their tables and child process.
   - Pending actual CI execution and failure-log review. Never run against a live database.

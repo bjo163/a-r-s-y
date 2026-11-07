@@ -202,3 +202,10 @@ Do not dump speculative future architecture into code. Implement the smallest sa
 Before work on product scope or architecture, read docs/02-master-blueprint.md and docs/09-product-and-service-catalog.md. For domain/API work read docs/10-platform-contracts-and-data-model.md. For security/privacy read docs/11-security-privacy-and-trust.md. For tests, backup, deployment and release read docs/12-operations-quality-and-release.md. For wizard/dashboard/localization read docs/13-onboarding-and-experience.md. Agent authority, issue quality, merge awareness, continuation rules and operator approval boundaries are defined by docs/08-autonomous-agent-operating-model.md.
 
 The agent should make ordinary engineering decisions independently, execute the safe queue end-to-end, and not ask the owner to choose routine implementation details. It must not perform real-host changes, public exposure, destructive production operations, paid-resource creation, live secret rotation or external/legal commitments without operator approval. A blocked high-impact action does not block unrelated repository tasks.
+
+
+## Follow-up hardening — integration database safety
+
+- Integration tests perform destructive schema cleanup only in a dedicated disposable database.
+- The test now fails before connecting unless DB_NAME is exactly `arsy_test`, DB_USER is exactly `arsy_test`, and DB_HOST is loopback (`127.0.0.1`, `::1`, or `localhost`).
+- This guard reduces accidental remote/production targeting; CI still must execute on the exact current main SHA before this suite is called verified.
