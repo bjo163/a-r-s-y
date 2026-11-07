@@ -21,7 +21,7 @@ These are planning targets; actual compatibility and capacity still require real
 - Fastify 5 / Node.js 24.
 - PostgreSQL 17 with named persistent volume.
 - Server-rendered HTML, local CSS and JavaScript.
-- Bash host utilities for install, deploy, update, doctor, and domain configuration.
+- Bash host utilities for install, deploy, update, doctor, domain configuration, environment migration, network validation, encrypted backup and isolated restore drill.
 
 ## Intended first-run journey
 
@@ -76,13 +76,14 @@ The profile is saved separately from host activation. It does not change DNS, pr
 
 **Existing reverse proxy:**
 - A-R-S-Y remains private on loopback port 18080.
-- User configures their own proxy upstream to `http://127.0.0.1:18080`.
+- User configures a same-host proxy upstream to `http://127.0.0.1:18082`. SSH recovery stays on `127.0.0.1:18080`.
 - TLS must be valid at the existing proxy before Secure cookies are enabled.
 - A-R-S-Y does not take over ports 80/443.
 
 ## Network layout
 
 - Private recovery: host `127.0.0.1:18080` → Caddy container `:8080`.
+- Existing same-host reverse proxy: host `127.0.0.1:18082` → Caddy container `:8081`; the proxy must overwrite forwarded client headers from the actual peer.
 - Public HTTP: separate configurable host bind/port → Caddy `:80`.
 - Public HTTPS: separate configurable host bind/port → Caddy `:443`.
 - Public bind defaults are loopback. Domain helper changes them only after explicit confirmation.

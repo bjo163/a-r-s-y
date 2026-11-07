@@ -65,6 +65,8 @@ sudo arsy-doctor
 
 ## Documentation and local AI handoff
 
+- [Complete documentation index](docs/INDEX.md)
+
 - [Active execution queue](TODO.md)
 - [Local AI handoff and current execution priorities](docs/LOCAL_AI_HANDOFF.md)
 - [Master technical blueprint](docs/02-master-blueprint.md)

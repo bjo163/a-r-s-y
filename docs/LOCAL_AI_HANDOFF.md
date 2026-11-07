@@ -60,9 +60,12 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 - One-time bootstrap-token Superadmin creation; single active Superadmin constraint.
 - Password hashing using Node.js scrypt; opaque PostgreSQL-backed sessions; login/logout.
 - CSRF/origin protections, rate limiting, audit events for relevant auth/setup/update actions.
-- Onboarding profile persistence with workspace, installation, environment, contact, timezone, language, node, access mode, hostname, target IPv4, proxy details; DNS A/AAAA check.
+- Onboarding profile persistence with workspace, installation, environment, contact, timezone, language, node, access mode, hostname, target IPv4 and proxy details; DNS A/AAAA diagnostic is timestamped and persisted, and retained across profile save only when its target still matches.
+- Dashboard readiness distinguishes responding control plane, Superadmin, profile, node, DNS diagnostic, access mode and domain activation. Selected IANA timezone is used for dashboard clock; the UI does not claim full translation.
+- Legacy environment migration preserves secrets and file mode, and leaves public binds on loopback until explicit domain activation.
+- Dedicated same-host reverse-proxy ingress at 127.0.0.1:18082; private SSH recovery remains 127.0.0.1:18080.
 - Dashboard update check, Later dismissal, explicit approval of exact commit SHA, terminal command generation.
-- Host scripts: deploy, update, doctor, domain apply/proxy.
+- Host scripts: deploy, update, doctor, domain apply/proxy, safe legacy environment migration, shared IPv4 validation, encrypted remote backup and isolated PostgreSQL restore drill.
 - Runtime Caddy config persisted under `/var/lib/arsy/Caddyfile` so source checkout/update does not replace it.
 - Brand assets and product/architecture/security/installation documentation.
 
@@ -91,40 +94,26 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 - `scripts/arsy-doctor.sh`: host and service diagnostic checks.
 - `.github/workflows/ci.yml`: Node tests, disposable PostgreSQL integration, Compose/Caddy validation, isolated shell regression tests and docs link check. It does not run a real VPS test or deploy.
 
-## 5. Immediate engineering priorities (execute in order)
+## 5. Current execution status and remaining work
 
-### P0 — establish reliable verification
-1. Resolve GitHub Actions runner queue issue; inspect whether jobs start and complete. Do not label queued/cancelled as passing.
-2. Add CI validation for Compose configuration using safe dummy environment values; ensure no real secrets are needed.
-3. Add shell tests or isolated test harnesses for installer/domain/deploy safety logic where practical.
-4. Add integration tests for setup, session, CSRF, onboarding, DNS check, update approval, and health behavior using disposable PostgreSQL.
-5. Ensure tests cover the private recovery listener and public listener mapping.
+### P0 — CI and automated verification
+1. Workflow has Compose config validation, PostgreSQL disposable integration, Caddy validation, Bash syntax, isolated migration/domain/deploy regression and Markdown link checking.
+2. Latest code commit 828a486 generated run 42367315230; at last check the validate job was queued with runner_id=null and zero steps. This is neither a pass nor a test failure.
+3. Do not lower permissions or add secrets. A repository/org Actions administrator must check runner availability, quotas and Actions policy if the queue remains stalled.
+4. After CI runs, fix observed failures, rerun on resulting SHA, and retain actual logs.
 
-### P1 — harden install/upgrade/domain lifecycle
-1. Review fresh install, repair, update, and rollback as separate lifecycle paths.
-2. Test that existing `.env`, database volume, deployed SHA, and `/var/lib/arsy/Caddyfile` survive each path.
-3. Fix and test migration of any legacy `.env` keys; remove stale ignored variables only with a safe migration plan.
-4. Verify domain apply rollback at every failure point: invalid DNS, occupied port, invalid IPv4, Compose failure, gateway restart failure, TLS health timeout.
-5. Review IPv4 global-unicast validation; current checks reject common private/shared/loopback/link-local/multicast ranges but are not a complete IANA registry validation.
-6. Verify reverse-proxy trust and secure-cookie behavior; document exact trusted proxy assumptions.
-7. Check script prerequisites and package availability on supported Ubuntu/Debian releases.
+### P1 — host lifecycle and ingress safety
+1. Safe legacy .env migration and tests exist; execute regression in CI and review first upgrade/repair on a real disposable host.
+2. Domain failure-matrix tests exist for validation, DNS, prerequisites, occupied ports, Compose failures and TLS timeout; execute them in CI. Real network and provider-firewall tests remain a release gate.
+3. Deploy lifecycle harness covers update, repair/redeploy, failed Compose start, failed health check, source rollback, and preservation of .env/Caddyfile/deployed SHA/no-volume-deletion. It does not yet emulate a full fresh install or a failure during first installation.
+4. Proxy boundaries: SSH recovery is loopback port 18080; existing same-host reverse proxy uses loopback port 18082; Fastify trusts one immediate Caddy hop; the reverse proxy must overwrite X-Forwarded headers. Remote/multi-hop proxies are unsupported.
+5. Independently review installer prerequisites and supported Ubuntu/Debian host behavior before private beta.
 
-### P2 — finish operator experience
-1. Audit onboarding UI against the intended hybrid CLI/Web flow; ensure saved profile is clearly distinguished from actual host activation.
-2. Provide a visible step/status summary: install, Superadmin, workspace/profile, node, access mode, DNS check, domain activation, final health.
-3. Make public domain instructions explicit about provider firewall being user-managed and no automatic DNS changes.
-4. Add clear recovery guidance and diagnostics for SSH tunnel, Caddy, app, DB, DNS, and HTTPS.
-5. Ensure update card cannot imply update has been applied merely because approval was recorded.
-6. Keep language and timezone selection consistent with persisted settings; do not claim full localization if only profile metadata is stored.
-
-### P3 — security and release gate
-1. Review session expiry/rotation, cookie flags, CSRF, proxy IP trust, rate limits, audit metadata, and error logging.
-2. Add dependency/license and container image review; generate SBOM only when release workflow is ready.
-3. Define backup/restore procedure and execute a restore drill before accepting customer data.
-4. Add threat model and security tests before any public beta.
-5. Create a release checklist with reproducible CI evidence and real VPS smoke test evidence.
-
-Do not skip P0/P1 to start DNS/edge/compute feature work.
+### P2 — onboarding and operator experience
+1. Web owns profile metadata and DNS observation; CLI owns host preflight and domain activation; provider DNS/firewall actions remain operator-managed.
+2. Dashboard displays evidence-backed profile, node, DNS, access, domain and control-plane states. A manual/provider step is never marked verified by saved profile alone.
+3. DNS result is timestamped, resolver errors are distinguished from no-record results, and a result survives profile-save only when hostname and target IPv4 still match.
+4. IANA timezone is validated and used for dashboard display. Language preference sets the HTML language attribute, but full translation remains future work.
 
 ## 6. Definition of done for the first-VPS foundation
 
@@ -188,11 +177,12 @@ Never use `docker compose down -v` as routine repair/update; it deletes the data
 
 ## 8. Verification snapshot at handoff
 
-- Latest known `main` before this documentation synchronization: `fad330468f2f29ba8d2ffbaa3e283d5a1cfde7aa`.
-- That commit contains the Docker Compose prerequisite fix (`8337917`) and runtime Caddy persistence fix (`fad3304`).
-- GitHub Actions run `42358651522` for that SHA was **queued** with no runner assigned when last checked. This is not a pass or a test failure.
-- No real VPS is connected to this work session. No SSH access, install, browser, public DNS, TLS, rollback, or backup restore test has been performed here.
-- Re-check branch head and latest Actions before starting. This snapshot is historical and must be refreshed by the next agent.
+- Latest code commit before this documentation refresh: 828a4867c7001b485cffa98f90d7574da11ac183.
+- Latest GitHub Actions run checked for that SHA: 42367315230; status queued, job validate has no assigned runner (runner_id=null) and no steps. Do not report CI as passing.
+- Automated CI includes Node unit/integration tests, PostgreSQL 17 service, Compose config, Caddy validation, shell syntax, environment/domain/deploy lifecycle mocks and Markdown local-link checking.
+- GitHub issue and PR collections were empty at the latest task audit; recheck before new work.
+- No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
+- Refresh this snapshot after the next workflow or real-host evidence.
 
 ## 9. Required close-out format for local AI
 

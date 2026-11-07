@@ -2,18 +2,19 @@
 
 ## Mandatory read order
 1. README.md
-2. TODO.md
-3. docs/LOCAL_AI_HANDOFF.md
-4. docs/00-narrative-and-positioning.md
-5. docs/02-master-blueprint.md
-6. docs/05-roadmap.md
-7. docs/08-autonomous-agent-operating-model.md
-8. docs/09-product-and-service-catalog.md
-9. docs/10-platform-contracts-and-data-model.md
-10. docs/11-security-privacy-and-trust.md
-11. docs/12-operations-quality-and-release.md
-12. docs/13-onboarding-and-experience.md
-13. Relevant operational docs, source, tests, workflows, issues and current Git state.
+2. docs/INDEX.md
+3. TODO.md
+4. docs/LOCAL_AI_HANDOFF.md
+5. docs/00-narrative-and-positioning.md
+6. docs/02-master-blueprint.md
+7. docs/05-roadmap.md
+8. docs/08-autonomous-agent-operating-model.md
+9. docs/09-product-and-service-catalog.md
+10. docs/10-platform-contracts-and-data-model.md
+11. docs/11-security-privacy-and-trust.md
+12. docs/12-operations-quality-and-release.md
+13. docs/13-onboarding-and-experience.md
+14. Relevant operational docs, source, tests, workflows, issues and current Git state.
 
 ## Authority
 Actual code, schema, tests and observed runtime define implementation truth. The handoff defines verified current state. The master blueprint defines target architecture, not permission to implement every future service. The roadmap defines gates. TODO defines the active queue. The autonomous operating model defines agent authority. Resolve conflicts using that model; never silently invent a product decision.
