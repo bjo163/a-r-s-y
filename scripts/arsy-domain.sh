@@ -83,10 +83,10 @@ if (( 10#$oct1 == 0 || 10#$oct1 == 10 || 10#$oct1 == 127 || 10#$oct1 >= 224 )) |
    (( 10#$oct1 == 100 && 10#$oct2 >= 64 && 10#$oct2 <= 127 )); then
   die "The target must be a globally routable IPv4 address, not a private, link-local, loopback, shared, or reserved address."
 fi
-DNS_IPS="$(getent ahostsv4 "$HOSTNAME" | awk '{print $1}' | sort -u | tr '\n' ' ')"
+DNS_IPS="$(getent ahostsv4 "$HOSTNAME" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || true)"
 [[ -n "$DNS_IPS" ]] || die "No public A record found for $HOSTNAME. Create A $HOSTNAME -> $IPV4 and retry."
 grep -qw "$IPV4" <<< "$DNS_IPS" || die "DNS A record ($DNS_IPS) does not include expected VPS IPv4 ($IPV4). Nothing changed."
-DNS_IPV6="$(getent ahostsv6 "$HOSTNAME" | awk '{print $1}' | sort -u | tr '\n' ' ')"
+DNS_IPV6="$(getent ahostsv6 "$HOSTNAME" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || true)"
 [[ -z "$DNS_IPV6" ]] || die "AAAA record(s) detected ($DNS_IPV6), but this single-VPS gateway currently binds IPv4 only. Remove the AAAA record or wait for explicit IPv6 support before applying."
 log "Domain: $HOSTNAME"
 log "DNS A record: $DNS_IPS"
