@@ -29,7 +29,7 @@
     <strong>UPDATE AVAILABLE</strong>
     <p id="update-copy">A newer A-R-S-Y version is available.</p>
     <div class="actions">
-      <button id="update-yes" type="button">Review update</button>
+      <button id="update-yes" type="button">Update now</button>
       <button id="update-later" class="secondary" type="button">Later</button>
     </div>
     <small id="update-note">No changes will be applied without your approval.</small>
@@ -67,9 +67,9 @@
             panel.classList.remove("visible");
             return;
           }
-          note.textContent = "Approval received. For this foundation build, run sudo arsy-update on the VPS to apply the update. The one-click Core API action will be added with the authenticated app backend.";
+          note.textContent = "Update approved. Run sudo arsy-update on the VPS to apply it. No update runs before this confirmation.";
           yes.disabled = true;
-          yes.textContent = "Approved";
+          yes.textContent = "Approved — pending VPS command";
         });
         later.addEventListener("click", () => {
           panel.classList.remove("visible");
