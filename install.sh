@@ -97,6 +97,7 @@ chmod 0755 /var/lib/arsy
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
+install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
 
 log "Installing A-R-S-Y Core and database. This may take a few minutes."
 /usr/local/sbin/arsy-deploy "$TARGET_SHA"
