@@ -67,5 +67,6 @@ jobs:
           for script in scripts/*.sh scripts/tests/*.sh; do bash -n "$script"; done
           bash scripts/tests/env-migrate.test.sh
           bash scripts/tests/network-validation.test.sh
+          bash scripts/tests/domain-helper.test.sh
       - name: Validate documentation links
         run: node scripts/check-doc-links.mjs

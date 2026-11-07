@@ -18,6 +18,8 @@ Proposed project licensing:
 - The installer does not rewrite sshd or firewall policy.
 - .env is excluded from Git and set to mode 0600 by the installer.
 - Updates require an explicit operator confirmation.
+- Caddy trusts forwarded client metadata only from private proxy peers; Fastify trusts exactly its immediate Caddy hop.
+- The supported existing-proxy topology is a same-host reverse proxy to 127.0.0.1:18080. Remote/untrusted proxy networks are not implicitly trusted.
 - The browser does not receive root credentials or the Docker socket.
 
 ## Before customer beta

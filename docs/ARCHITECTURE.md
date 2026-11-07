@@ -55,6 +55,7 @@ Public listener binds default to loopback. The managed domain helper changes the
 - Opaque session tokens stored as keyed digests in PostgreSQL.
 - HttpOnly/SameSite cookie configuration; Secure flag depends on HTTPS configuration.
 - CSRF token and same-origin protections on state-changing routes.
+- Caddy trusts forwarded client metadata from private same-host proxy peers; Fastify trusts one immediate proxy hop (Caddy).
 - Setup/login rate limits.
 - Audit events for setup and authentication/update actions.
 - Private database network; no public DB port.

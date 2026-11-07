@@ -89,7 +89,7 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 - `scripts/arsy-update.sh`: update discovery and consent gate.
 - `scripts/arsy-domain.sh`: managed domain apply and existing proxy instructions.
 - `scripts/arsy-doctor.sh`: host and service diagnostic checks.
-- `.github/workflows/ci.yml`: Node test/syntax checks and Bash syntax checks. It does not currently run a real VPS test or deploy.
+- `.github/workflows/ci.yml`: Node tests, disposable PostgreSQL integration, Compose/Caddy validation, isolated shell regression tests and docs link check. It does not run a real VPS test or deploy.
 
 ## 5. Immediate engineering priorities (execute in order)
 
