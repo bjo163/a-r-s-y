@@ -30,7 +30,7 @@ OLD_SHA="$(cat /var/lib/arsy/deployed-sha 2>/dev/null || true)"
 
 ensure_env() {
   local key="$1" value="$2"
-  if ! grep -qE "^\${key}=" .env; then
+  if ! grep -qE "^${key}=" .env; then
     printf '%s=%s\n' "$key" "$value" >> .env
   fi
 }
