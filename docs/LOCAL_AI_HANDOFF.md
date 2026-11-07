@@ -175,14 +175,16 @@ sudo bash /opt/arsy/install.sh --repair
 
 Never use `docker compose down -v` as routine repair/update; it deletes the database volume.
 
-## 8. Verification snapshot at handoff
+## 8. Verification snapshot
 
-- Latest implementation commit at this documentation refresh: 0e9041e315971d9246fe46e0ee39c5d65d9abca7.
-- Latest GitHub Actions run checked for current main: 42368111729; status queued, job validate has runner_id=0 and no executed steps. Do not report CI as passing.
-- Automated CI includes Node unit/integration tests, PostgreSQL 17 service, Compose config, Caddy validation, shell syntax, environment/domain/deploy lifecycle mocks and Markdown local-link checking.
-- GitHub issue and PR collections were empty at the latest task audit; recheck before new work.
+- Main base SHA for the current release-hardening PR: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
+- PR #1 is open from `fix/release-config-validation`; current branch head at this snapshot: `e5bc6f07e4bf62a96c7b5249c67e681dd1bcdfdf`.
+- Latest observed PR Actions run: `42393478418` (pending); push run: `42393473949` (queued). The validate job has no runner assignment or executed steps. Neither run is a pass or test failure.
+- CI includes Node unit/integration tests, PostgreSQL 17 service, Compose/Caddy validation, shell regression tests, docs link checking, production npm audit, CycloneDX SBOM artifact generation, and production control-plane image build. None of these CI gates has been verified on this branch until the workflow executes and logs/artifacts are reviewed.
+- PR #1 is the active release-hardening PR; do not use the historical statement that the PR collection was empty.
 - No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
-- Refresh this snapshot after the next workflow or real-host evidence.
+- A documentation-only follow-up commit will itself trigger a new workflow run; always inspect the latest run against the resulting branch SHA.
+
 
 ## 9. Required close-out format for local AI
 
