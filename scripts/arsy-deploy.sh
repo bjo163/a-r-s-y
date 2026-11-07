@@ -27,6 +27,13 @@ exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
 cd "$APP_DIR"
 [[ -f .env ]] || die "Missing $APP_DIR/.env."
 chmod 0600 .env
+
+# Runtime gateway configuration must survive Git checkouts and updates.
+install -d -m 0755 /var/lib/arsy
+if [[ ! -f /var/lib/arsy/Caddyfile ]]; then
+  install -m 0644 "$APP_DIR/Caddyfile" /var/lib/arsy/Caddyfile
+fi
+
 OLD_SHA="$(cat /var/lib/arsy/deployed-sha 2>/dev/null || true)"
 
 ensure_env() {

@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 APP_DIR="/opt/arsy"
 ENV_FILE="$APP_DIR/.env"
-CADDY_FILE="$APP_DIR/Caddyfile"
+CADDY_FILE="/var/lib/arsy/Caddyfile"
 COMPOSE_FILE="$APP_DIR/compose.yaml"
 log(){ printf '\n[ARSY DOMAIN] %s\n' "$*"; }
 die(){ printf '\n[ARSY DOMAIN][ERROR] %s\n' "$*" >&2; exit 1; }
@@ -97,7 +97,7 @@ log "Your provider firewall/security group must allow inbound TCP 80 and 443."
 read -r -p "Apply these changes now? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || die "Cancelled. No changes made."
 
-BACKUP="$APP_DIR/.domain-backup-$(date +%Y%m%d%H%M%S)"
+BACKUP="/var/lib/arsy/domain-backup-$(date +%Y%m%d%H%M%S)"
 mkdir -m 0700 "$BACKUP"
 cp -a "$ENV_FILE" "$CADDY_FILE" "$BACKUP/"
 ROLLBACK_DONE=0
