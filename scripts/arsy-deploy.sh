@@ -88,16 +88,18 @@ compose_up() {
 
 wait_for_health() {
   local http_port health_url attempt healthy=0
+  local health_attempts="${ARSY_DEPLOY_HEALTH_ATTEMPTS:-60}"
+  local health_interval="${ARSY_DEPLOY_HEALTH_INTERVAL:-2}"
   http_port="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1 | tr -d '\r')"
   http_port="${http_port:-18080}"
   [[ "$http_port" =~ ^[0-9]{1,5}$ ]] && (( http_port >= 1 && http_port <= 65535 )) || return 1
   health_url="http://127.0.0.1:${http_port}/healthz"
-  for attempt in $(seq 1 60); do
+  for attempt in $(seq 1 "$health_attempts"); do
     if curl -fsS --connect-timeout 2 --max-time 5 "$health_url" >/dev/null 2>&1; then
       healthy=1
       break
     fi
-    sleep 2
+    sleep "$health_interval"
   done
   [[ "$healthy" -eq 1 ]]
 }

@@ -6,6 +6,7 @@ trap 'rm -rf "$TMP"' EXIT
 REMOTE="$TMP/origin.git"
 TARGET_SHA="$(git -C "$ROOT" rev-parse HEAD)"
 git init --bare "$REMOTE" >/dev/null
+git --git-dir="$REMOTE" symbolic-ref HEAD refs/heads/main
 git -C "$ROOT" push "$REMOTE" "$TARGET_SHA:refs/heads/main" >/dev/null 2>&1
 OLD_SHA="$(git -C "$ROOT" rev-parse "${TARGET_SHA}^")"
 
@@ -67,7 +68,7 @@ run_deploy(){
     ARSY_APP_DIR="$dir/app" ARSY_STATE_DIR="$dir/state" ARSY_LOG_DIR="$dir/log" \
     ARSY_DEPLOY_LOCK_FILE="$dir/lock/deploy.lock" ARSY_HOST_BIN_DIR="$dir/hostbin" \
     MOCK_DOCKER_LOG="$dir/docker.log" MOCK_UP_MARKER="$dir/up.marker" \
-    MOCK_HEALTH_MARKER="$dir/health.marker" $extra \
+    MOCK_HEALTH_MARKER="$dir/health.marker"     ARSY_DEPLOY_HEALTH_ATTEMPTS=1 ARSY_DEPLOY_HEALTH_INTERVAL=0 $extra \
     bash "$ROOT/scripts/arsy-deploy.sh" "$TARGET_SHA"
 }
 
