@@ -63,12 +63,14 @@ if (( modern_layout == 0 )); then
   set_env ARSY_PUBLIC_HTTPS_PORT "$public_https_port"
   set_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
   set_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
+  set_env ARSY_PROXY_HTTP_PORT "18082"
 else
   [[ -n "$(get_env ARSY_HTTP_PORT || true)" ]] || set_env ARSY_HTTP_PORT "18080"
   [[ -n "$(get_env ARSY_PUBLIC_HTTP_PORT || true)" ]] || set_env ARSY_PUBLIC_HTTP_PORT "18081"
   [[ -n "$(get_env ARSY_PUBLIC_HTTPS_PORT || true)" ]] || set_env ARSY_PUBLIC_HTTPS_PORT "18444"
   [[ -n "$(get_env ARSY_PUBLIC_HTTP_BIND || true)" ]] || set_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
   [[ -n "$(get_env ARSY_PUBLIC_HTTPS_BIND || true)" ]] || set_env ARSY_PUBLIC_HTTPS_BIND "127.0.0.1"
+  [[ -n "$(get_env ARSY_PROXY_HTTP_PORT || true)" ]] || set_env ARSY_PROXY_HTTP_PORT "18082"
 fi
 
 set_env ARSY_ENV_LAYOUT_VERSION "2"
