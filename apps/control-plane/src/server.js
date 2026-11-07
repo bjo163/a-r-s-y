@@ -114,8 +114,17 @@ function dashboardPage(user, csrf, profile = {}, domainState = null) {
   const timezone = String(profile.timezone || 'Asia/Jakarta');
   const safeTimezone = escapeHtml(timezone);
   const dns = profile.dnsCheck && typeof profile.dnsCheck === 'object' ? profile.dnsCheck : null;
-  const dnsState = !dns ? 'Belum diperiksa' : dns.matches === true ? 'A record cocok' : dns.matches === false ? 'A record belum cocok' : 'DNS diagnostic selesai';
-  const dnsDetails = dns ? 'A: ' + escapeHtml((dns.a || []).join(', ') || '—') + ' · AAAA: ' + escapeHtml((dns.aaaa || []).join(', ') || '—') + ' · ' + escapeHtml(dns.checkedAt || 'time unavailable') : 'DNS diagnostic belum dijalankan.';
+  const dnsState = !dns ? 'Belum diperiksa'
+    : Array.isArray(dns.dnsErrors) && dns.dnsErrors.length ? 'RESOLVER ERROR'
+    : dns.matches === true ? 'A RECORD MATCH'
+    : dns.matches === false ? 'ACTION REQUIRED'
+    : (dns.a?.length || dns.aaaa?.length) ? 'DNS RECORDS FOUND' : 'NO A/AAAA RECORD';
+  const dnsDetails = dns
+    ? 'A: ' + escapeHtml((dns.a || []).join(', ') || '—') +
+      ' · AAAA: ' + escapeHtml((dns.aaaa || []).join(', ') || '—') +
+      ((dns.dnsErrors || []).length ? ' · Resolver: ' + escapeHtml(dns.dnsErrors.join('; ')) : '') +
+      ' · Checked: ' + escapeHtml(dns.checkedAt || 'time unavailable')
+    : 'DNS diagnostic belum dijalankan.';
   const domainVerified = Boolean(domainState && domainState.status === 'active' && domainState.hostname === profile.hostname);
   const accessTitle = profile.accessMode === 'public'
     ? (domainVerified ? 'Managed domain activation verified' : 'Needs operator activation')

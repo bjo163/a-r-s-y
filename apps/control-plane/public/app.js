@@ -88,13 +88,14 @@
           hostname: onboardingForm.elements.hostname.value,
           targetIpv4: onboardingForm.elements.targetIpv4.value
         }, csrf);
-        const status = result.matches === true ? ' · IPv4 cocok' :
+        const resolverFailed = Array.isArray(result.dnsErrors) && result.dnsErrors.length > 0;
+        const hasRecords = result.a.length > 0 || result.aaaa.length > 0;
+        const status = resolverFailed ? ' · DNS resolver sementara tidak tersedia' :
+          result.matches === true ? ' · IPv4 cocok' :
           result.matches === false ? ' · IPv4 belum cocok' :
-          result.aaaa.length ? ' · AAAA ditemukan' : ' · A record ditemukan';
+          hasRecords ? ' · DNS record ditemukan' : ' · Tidak ada A/AAAA record';
         const checkedAt = result.checkedAt ? ' · Checked ' + new Date(result.checkedAt).toLocaleString() : '';
-        const resolverState = Array.isArray(result.dnsErrors) && result.dnsErrors.length
-          ? ' · Resolver: ' + result.dnsErrors.join('; ')
-          : '';
+        const resolverState = resolverFailed ? ' · Resolver: ' + result.dnsErrors.join('; ') : '';
         resultBox.textContent = 'A: ' + (result.a.join(', ') || '—') +
           ' · AAAA: ' + (result.aaaa.join(', ') || '—') + status + resolverState + checkedAt +
           '. Ini hanya diagnostic; DNS tidak diubah.'
