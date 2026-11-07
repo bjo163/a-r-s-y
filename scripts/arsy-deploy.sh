@@ -23,7 +23,7 @@ exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
 
 cd "$APP_DIR"
 [[ -f .env && -f compose.yaml ]] || die "Missing .env or compose.yaml."
-OLD_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+OLD_SHA="$(cat /var/lib/arsy/deployed-sha 2>/dev/null || true)"
 
 log "Fetching main and release tags."
 git fetch --prune --tags origin '+refs/heads/main:refs/remotes/origin/main'
