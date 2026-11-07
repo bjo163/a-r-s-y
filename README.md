@@ -50,7 +50,15 @@ The installer prints a one-time bootstrap key after installation. Keep it privat
 1. Open the web app and go to the initial setup page.
 2. Paste the bootstrap key.
 3. Enter the Superadmin display name, email, and a password of at least 14 characters.
-4. Submit once. A-R-S-Y creates the first Superadmin and opens the dashboard.
+4. Submit once. A-R-S-Y creates the first Superadmin and opens the installation wizard.
+5. Complete the workspace, installation, node, timezone, language, and access-mode profile. Saving the wizard records choices; it does not open public ports or modify DNS/firewall settings.
+6. For private access, continue using the SSH tunnel. For public access, first create an A record to the VPS IPv4 and allow inbound TCP 80/443 in the provider firewall, then run the reviewed command shown by the wizard:
+   
+   ```bash
+   sudo arsy-domain apply --hostname panel.example.com
+   ```
+
+   The command prints the planned host changes and asks for confirmation before binding public ports and enabling Caddy HTTPS. If an existing reverse proxy is used, choose that mode and follow the generated proxy instructions instead.
 
 To retrieve the key later from the VPS:
 
@@ -102,7 +110,7 @@ sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f 
 - Do not claim HA, Anycast, volumetric DDoS protection, or distributed-storage guarantees.
 - Do not execute arbitrary customer code on the control-plane host.
 - Backups for customer data must leave the VPS/provider failure domain.
-- When the app is exposed through HTTPS, set ARSY_COOKIE_SECURE=true in /opt/arsy/.env and redeploy with an explicitly approved update.
+- The domain helper sets ARSY_COOKIE_SECURE=true when managed HTTPS is successfully applied. For an existing reverse proxy, only enable Secure cookies after valid HTTPS is confirmed at the proxy.
 
 ## License
 

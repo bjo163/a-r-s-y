@@ -70,6 +70,10 @@ if [[ -z "$IPV4" ]]; then
   IPV4="$(curl -4fsS --max-time 8 https://api.ipify.org || true)"
 fi
 [[ "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "Could not determine public IPv4. Supply --ipv4 explicitly."
+IFS=. read -r oct1 oct2 oct3 oct4 <<< "$IPV4"
+for octet in "$oct1" "$oct2" "$oct3" "$oct4"; do
+  (( 10#$octet <= 255 )) || die "Invalid IPv4 address: $IPV4"
+done
 DNS_IPS="$(getent ahostsv4 "$HOSTNAME" | awk '{print $1}' | sort -u | tr '\n' ' ')"
 [[ -n "$DNS_IPS" ]] || die "No public A record found for $HOSTNAME. Create A $HOSTNAME -> $IPV4 and retry."
 grep -qw "$IPV4" <<< "$DNS_IPS" || die "DNS A record ($DNS_IPS) does not include expected VPS IPv4 ($IPV4). Nothing changed."
@@ -98,11 +102,24 @@ set_env ARSY_HTTPS_PORT "443"
 set_env ARSY_COOKIE_SECURE "true"
 cd "$APP_DIR"
 if ! docker compose config -q; then rollback; die "Compose validation failed. Previous config restored."; fi
-docker compose up -d gateway
-sleep 5
-if ! curl -kfsS --max-time 15 "https://$HOSTNAME/healthz" >/dev/null; then
+if ! docker compose up -d gateway; then
   rollback
-  die "HTTPS health check failed. Previous configuration restored. Check provider firewall and Caddy logs."
+  die "Could not start the gateway. Previous configuration restored."
+fi
+
+# Resolve the hostname to loopback for the local check. This avoids depending
+# on provider NAT loopback while preserving the real hostname for TLS/SNI.
+healthy=0
+for attempt in $(seq 1 90); do
+  if curl --resolve "$HOSTNAME:443:127.0.0.1" -fsS --connect-timeout 2 --max-time 5 "https://$HOSTNAME/healthz" >/dev/null 2>&1; then
+    healthy=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$healthy" -ne 1 ]]; then
+  rollback
+  die "HTTPS health check failed after 180 seconds. Previous configuration restored. Check DNS, provider firewall (TCP 80/443), and Caddy logs."
 fi
 log "HTTPS endpoint is responding: https://$HOSTNAME"
 log "Private recovery access remains available through SSH tunnel if the port mapping is unchanged."

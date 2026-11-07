@@ -34,16 +34,16 @@ if [[ -n "${1:-}" && "${1:-}" != "--repair" ]]; then
 fi
 
 log "Preflight summary"
-printf '  OS             %s %s\\n' "$PRETTY_NAME" "${VERSION_ID:-}"
-printf '  Architecture   %s\\n' "$(dpkg --print-architecture)"
-printf '  Hostname       %s\\n' "$(hostname -f 2>/dev/null || hostname)"
-printf '  CPU cores      %s\\n' "$(nproc)"
-printf '  Memory         %s\\n' "$(awk '/MemTotal/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)"
-printf '  Root disk free %s\\n' "$(df -h / | awk 'NR==2 {print $4}')"
-printf '  Docker         %s\\n' "$(command -v docker >/dev/null 2>&1 && docker --version || echo 'will be installed')"
-printf '  Panel bind     127.0.0.1:18080 (private by default)\\n'
-printf '  Public ports   80/443 are not opened by this installer\\n'
-printf '\\nThe installer will install prerequisites if missing, create /opt/arsy, create secrets, and start PostgreSQL + A-R-S-Y Core. Existing firewall and SSH settings will not be changed.\\n'
+printf '  OS             %s %s\n' "$PRETTY_NAME" "${VERSION_ID:-}"
+printf '  Architecture   %s\n' "$(dpkg --print-architecture)"
+printf '  Hostname       %s\n' "$(hostname -f 2>/dev/null || hostname)"
+printf '  CPU cores      %s\n' "$(nproc)"
+printf '  Memory         %s\n' "$(awk '/MemTotal/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)"
+printf '  Root disk free %s\n' "$(df -h / | awk 'NR==2 {print $4}')"
+printf '  Docker         %s\n' "$(command -v docker >/dev/null 2>&1 && docker --version || echo 'will be installed')"
+printf '  Panel bind     127.0.0.1:18080 (private by default)\n'
+printf '  Public ports   80/443 are not opened by this installer\n'
+printf '\nThe installer will install prerequisites if missing, create /opt/arsy, create secrets, and start PostgreSQL + A-R-S-Y Core. Existing firewall and SSH settings will not be changed.\n'
 if [[ -t 0 ]]; then
   read -r -p "Continue with installation? [y/N] " confirm
   [[ "$confirm" =~ ^[Yy]$ ]] || die "Installation cancelled. No changes made."
