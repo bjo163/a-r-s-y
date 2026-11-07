@@ -126,6 +126,21 @@ function dashboardPage(user, csrf, profile = {}, domainState = null) {
       ? 'TLS and external reachability are operator-managed and not verified by Core.'
       : 'Private SSH tunnel is the default and recovery path.';
   const languageNote = profile.language === 'en' ? 'English preference saved; interface is not fully translated yet.' : 'Preferensi bahasa tersimpan; antarmuka belum sepenuhnya diterjemahkan.';
+  const profileReady = Boolean(profile.workspaceName && profile.installationName && profile.contactEmail);
+  const nodeReady = Boolean(profile.nodeName);
+  const dnsProgress = !dns ? 'NOT CHECKED' : dns.matches === true ? 'A RECORD MATCH' : dns.matches === false ? 'ACTION REQUIRED' : 'OBSERVED';
+  const accessProgress = profile.accessMode === 'public'
+    ? (domainVerified ? 'LOCAL HTTPS OK' : 'OPERATOR ACTION')
+    : profile.accessMode === 'proxy' ? 'OPERATOR VERIFY' : 'PRIVATE DEFAULT';
+  const progressHtml =
+    '<div class="section-head"><div><div class="eyebrow">ONBOARDING / READINESS</div><h2>First-node progress</h2></div><a class="button button-quiet" href="/onboarding">Review profile</a></div>' +
+    '<div class="service-grid">' +
+    '<article class="service-card"><div class="service-icon">01</div><div><h3>Superadmin</h3><p>Authenticated control-plane owner.</p></div><span class="service-state live">READY</span></article>' +
+    '<article class="service-card"><div class="service-icon">02</div><div><h3>Installation profile</h3><p>' + (profileReady ? 'Workspace and installation saved.' : 'Workspace details incomplete.') + '</p></div><span class="service-state ' + (profileReady ? 'live' : 'planned') + '">' + (profileReady ? 'SAVED' : 'INCOMPLETE') + '</span></article>' +
+    '<article class="service-card"><div class="service-icon">03</div><div><h3>Core node identity</h3><p>' + (nodeReady ? escapeHtml(profile.nodeName) : 'Node display name is missing.') + '</p></div><span class="service-state ' + (nodeReady ? 'live' : 'planned') + '">' + (nodeReady ? 'SAVED' : 'INCOMPLETE') + '</span></article>' +
+    '<article class="service-card"><div class="service-icon">04</div><div><h3>DNS diagnostic</h3><p>' + (dns ? escapeHtml(dns.checkedAt || 'Checked; timestamp unavailable') : 'A record observation has not been run.') + '</p></div><span class="service-state ' + (dns && dns.matches === true ? 'live' : 'planned') + '">' + dnsProgress + '</span></article>' +
+    '<article class="service-card"><div class="service-icon">05</div><div><h3>Access configuration</h3><p>' + (profile.accessMode === 'private' ? 'SSH tunnel is the selected recovery path; external tunnel reachability is not tested here.' : profile.accessMode === 'proxy' ? 'Existing proxy is operator-managed; verify HTTPS from an external network.' : domainVerified ? 'Local HTTPS health check succeeded; this is not external uptime proof.' : 'DNS and provider firewall must be ready before CLI activation.') + '</p></div><span class="service-state ' + (domainVerified ? 'live' : 'planned') + '">' + accessProgress + '</span></article>' +
+    '</div>';
   const body =
     '<main class="dashboard">' +
     '<aside class="sidebar"><div class="side-label">COMMAND</div><a class="nav-item active" href="/dashboard"><span>◈</span> Overview</a>' +
@@ -135,11 +150,12 @@ function dashboardPage(user, csrf, profile = {}, domainState = null) {
     '<div class="nav-item disabled"><span>▣</span> Storage <small>soon</small></div>' +
     '<div class="side-spacer"></div><div class="side-label">IDENTITY</div><div class="identity-mini"><span class="avatar">' + initials + '</span><span><strong>' + safeName + '</strong><small>SUPERADMIN</small></span></div>' +
     '</aside>' +
-    '<section class="dashboard-main"><div class="dashboard-head"><div><div class="eyebrow">SYSTEM OVERVIEW / NODE 01</div><h1>Welcome, ' + safeName + '.</h1><p class="lead">A-R-S-Y Core Node is ready for its first configuration.</p></div>' +
+    '<section class="dashboard-main"><div class="dashboard-head"><div><div class="eyebrow">SYSTEM OVERVIEW / NODE 01</div><h1>Welcome, ' + safeName + '.</h1><p class="lead">Your installation profile is saved. Review the verified and operator-managed steps below.</p></div>' +
     '<div class="profile"><span class="avatar">' + initials + '</span><span><strong>' + safeName + '</strong><small>' + safeEmail + '</small></span><form data-logout><button class="button button-quiet" type="submit">Sign out</button></form></div></div>' +
     '<div class="stats-grid"><article class="stat-card"><span class="stat-label">CONTROL PLANE</span><strong class="stat-value">ONLINE</strong><span class="stat-meta"><i class="live-dot"></i> Core web + database</span></article>' +
     '<article class="stat-card"><span class="stat-label">ACTIVE IDENTITY</span><strong class="stat-value">01</strong><span class="stat-meta">Superadmin account</span></article>' +
     '<article class="stat-card"><span class="stat-label">DEPLOYMENT MODE</span><strong class="stat-value">SINGLE VPS</strong><span class="stat-meta">Optional nodes later</span></article></div>' +
+    progressHtml +
     '<div class="section-head"><div><div class="eyebrow">SERVICE MAP</div><h2>Infrastructure modules</h2></div><span class="pill pill-live">FOUNDATION</span></div>' +
     '<div class="service-grid">' +
     '<article class="service-card"><div class="service-icon">◈</div><div><h3>ARSY Core</h3><p>Identity, access, control API foundation.</p></div><span class="service-state live">ONLINE</span></article>' +
@@ -153,7 +169,7 @@ function dashboardPage(user, csrf, profile = {}, domainState = null) {
     '<div class="bottom-grid"><article class="info-card"><div class="eyebrow">OPERATOR IDENTITY</div><h3>Superadmin protected</h3><p>' + safeEmail + '</p><span class="pill pill-live">PLATFORM OWNER</span></article>' +
     '<article class="info-card"><div class="eyebrow">NEXT STEP</div><h3>Configure your first services</h3><p>Core foundation is running. DNS, edge, tunnel, storage and compute will be enabled in later milestones.</p></article></div>' +
     '<p class="dashboard-version">A-R-S-Y FOUNDATION · ONE COMMAND PLANE. OPEN BY DESIGN.</p></section></main>';
-  return page('Command center', body, csrf);
+  return page('Command center', body, csrf, profile.language || 'id');
 }
 
 
@@ -516,7 +532,7 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   const nextStep = accessMode === 'public'
     ? 'Untuk menerapkan domain setelah DNS A record mengarah ke VPS, jalankan: sudo arsy-domain apply --hostname ' + hostname + (targetIpv4 ? ' --ipv4 ' + targetIpv4 : '')
     : accessMode === 'proxy'
-      ? 'Konfigurasikan reverse proxy ke http://127.0.0.1:18080. Panduan: sudo arsy-domain proxy --hostname ' + hostname
+      ? 'Konfigurasikan same-host reverse proxy ke http://127.0.0.1:18082. Panduan: sudo arsy-domain proxy --hostname ' + hostname
       : 'Akses privat tetap aktif melalui SSH tunnel.';
   return reply.send({ ok: true, redirect: '/dashboard', message: 'Profil instalasi tersimpan.', nextStep });
 });

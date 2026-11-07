@@ -22,7 +22,7 @@ The installer:
 - Installs only the Compose plugin when Docker already exists and only Compose is missing.
 - Clones/fetches A-R-S-Y, creates secrets, and stores them in `/opt/arsy/.env` (mode 0600).
 - Starts PostgreSQL, Fastify app, and Caddy gateway; waits for health.
-- Installs `arsy-update`, `arsy-doctor`, and `arsy-domain` host commands.
+- Installs `arsy-update`, `arsy-doctor`, `arsy-domain`, environment migration, network validation, backup, and restore-drill host commands.
 
 The installer does not edit host firewall rules or SSH daemon settings. It does not open public ports. Existing environment values and database volume must be preserved during repair/update.
 
@@ -92,7 +92,7 @@ Keep A-R-S-Y private and configure the existing proxy upstream to:
 http://127.0.0.1:18082
 ```
 
-Run `sudo arsy-domain proxy --hostname panel.example.com` to print example guidance. TLS terminates at the existing proxy. Enable Secure cookies only after HTTPS and trusted forwarded-protocol handling are verified. A-R-S-Y does not take over ports 80/443 in this mode.
+Run `sudo arsy-domain proxy --hostname panel.example.com` to print example guidance. Point the same-host proxy to `http://127.0.0.1:18082`; the private SSH recovery path remains `127.0.0.1:18080`. TLS terminates at the existing proxy. Enable Secure cookies only after HTTPS and trusted forwarded-protocol handling are verified. A-R-S-Y does not take over ports 80/443 in this mode.
 
 ## 6. Updates
 

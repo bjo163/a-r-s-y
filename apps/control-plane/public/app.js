@@ -88,8 +88,14 @@
           hostname: onboardingForm.elements.hostname.value,
           targetIpv4: onboardingForm.elements.targetIpv4.value
         }, csrf);
-        resultBox.textContent = 'A: ' + (result.a.join(', ') || '—') + ' · AAAA: ' + (result.aaaa.join(', ') || '—') +
-          (result.matches === null ? '' : result.matches ? ' · IPv4 cocok' : ' · IPv4 belum cocok');
+        const status = result.matches === true ? ' · IPv4 cocok' :
+          result.matches === false ? ' · IPv4 belum cocok' :
+          result.aaaa.length ? ' · AAAA ditemukan' : ' · A record ditemukan';
+        const checkedAt = result.checkedAt ? ' · Checked ' + new Date(result.checkedAt).toLocaleString() : '';
+        resultBox.textContent = 'A: ' + (result.a.join(', ') || '—') +
+          ' · AAAA: ' + (result.aaaa.join(', ') || '—') + status + checkedAt +
+          '. Ini hanya diagnostic; DNS tidak diubah.'
+
       } catch (error) { resultBox.textContent = error.message; }
     });
     onboardingForm.addEventListener('submit', async function (event) {
