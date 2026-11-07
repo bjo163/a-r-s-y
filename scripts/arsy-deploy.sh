@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="/opt/arsy"
-LOG_DIR="/var/log/arsy"
-LOCK_FILE="/run/lock/arsy-deploy.lock"
+TEST_MODE="${ARSY_TEST_MODE:-0}"
+APP_DIR="${ARSY_APP_DIR:-/opt/arsy}"
+STATE_DIR="${ARSY_STATE_DIR:-/var/lib/arsy}"
+LOG_DIR="${ARSY_LOG_DIR:-/var/log/arsy}"
+LOCK_FILE="${ARSY_DEPLOY_LOCK_FILE:-/run/lock/arsy-deploy.lock}"
+HOST_BIN_DIR="${ARSY_HOST_BIN_DIR:-/usr/local/sbin}"
 TARGET_SHA="${1:-}"
 
 log() { printf '[ARSY-DEPLOY] %s\n' "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
-[[ "$EUID" -eq 0 ]] || die "Must run as root."
+if [[ "$TEST_MODE" == "1" ]]; then
+  [[ "$APP_DIR" != "/opt/arsy" && "$STATE_DIR" != "/var/lib/arsy" && "$HOST_BIN_DIR" != "/usr/local/sbin" ]] || die "Test mode requires isolated temporary paths."
+else
+  [[ "$EUID" -eq 0 ]] || die "Must run as root."
+fi
 [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || die "Expected a 40-character lowercase Git commit SHA."
 [[ -d "$APP_DIR/.git" ]] || die "Git checkout not found at $APP_DIR."
 command -v docker >/dev/null 2>&1 || die "Docker is not installed."
@@ -17,9 +24,10 @@ command -v curl >/dev/null 2>&1 || die "curl is not installed."
 command -v flock >/dev/null 2>&1 || die "flock is not installed."
 command -v openssl >/dev/null 2>&1 || die "openssl is not installed."
 
-install -d -m 0750 "$LOG_DIR" /run/lock
-install -d -m 0755 /var/lib/arsy
-chmod 0755 /var/lib/arsy
+install -d -m 0750 "$LOG_DIR" "$(dirname -- "$LOCK_FILE")"
+install -d -m 0755 "$STATE_DIR"
+chmod 0755 "$STATE_DIR"
+install -d -m 0755 "$HOST_BIN_DIR"
 exec 9>"$LOCK_FILE"
 flock -n 9 || die "Another deployment is already running."
 exec > >(tee -a "$LOG_DIR/deploy.log") 2>&1
@@ -30,11 +38,11 @@ chmod 0600 .env
 
 # Runtime gateway configuration must survive Git checkouts and updates.
 install -d -m 0755 /var/lib/arsy
-if [[ ! -f /var/lib/arsy/Caddyfile ]]; then
-  install -m 0644 "$APP_DIR/Caddyfile" /var/lib/arsy/Caddyfile
+if [[ ! -f $STATE_DIR/Caddyfile ]]; then
+  install -m 0644 "$APP_DIR/Caddyfile" $STATE_DIR/Caddyfile
 fi
 
-OLD_SHA="$(cat /var/lib/arsy/deployed-sha 2>/dev/null || true)"
+OLD_SHA="$(cat $STATE_DIR/deployed-sha 2>/dev/null || true)"
 
 ensure_env() {
   local key="$1" value="$2"
@@ -78,6 +86,22 @@ compose_up() {
   compose up -d --remove-orphans
 }
 
+wait_for_health() {
+  local http_port health_url attempt healthy=0
+  http_port="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1 | tr -d '\r')"
+  http_port="${http_port:-18080}"
+  [[ "$http_port" =~ ^[0-9]{1,5}$ ]] && (( http_port >= 1 && http_port <= 65535 )) || return 1
+  health_url="http://127.0.0.1:${http_port}/healthz"
+  for attempt in $(seq 1 60); do
+    if curl -fsS --connect-timeout 2 --max-time 5 "$health_url" >/dev/null 2>&1; then
+      healthy=1
+      break
+    fi
+    sleep 2
+  done
+  [[ "$healthy" -eq 1 ]]
+}
+
 rollback() {
   local reason="$1"
   log "Deployment failed: $reason"
@@ -85,10 +109,10 @@ rollback() {
     log "Restoring previous source revision $OLD_SHA."
     git checkout --detach "$OLD_SHA"
     git reset --hard "$OLD_SHA"
-    if compose_up; then
-      log "Previous stack restored. Database migrations are additive and must remain backward-compatible."
+    if compose_up && wait_for_health; then
+      log "Previous stack restored and health-checked. Persistent volumes were preserved."
     else
-      log "CRITICAL: rollback failed. Inspect Docker Compose logs and preserve the database volume."
+      log "CRITICAL: rollback or its health check failed. Inspect Docker Compose logs and preserve the database volume."
     fi
   else
     log "No previous deployment is recorded. Initial deployment requires manual repair if it fails."
@@ -106,33 +130,20 @@ fi
 log "Building application and starting services."
 compose_up || rollback "Compose deployment failed."
 
-HTTP_PORT="$(sed -n 's/^ARSY_HTTP_PORT=//p' .env | tail -n1 | tr -d '\r')"
-HTTP_PORT="${HTTP_PORT:-18080}"
-[[ "$HTTP_PORT" =~ ^[0-9]{1,5}$ ]] && (( HTTP_PORT >= 1 && HTTP_PORT <= 65535 )) || rollback "ARSY_HTTP_PORT is invalid."
+wait_for_health || rollback "Health check failed after deployment."
 
-HEALTH_URL="http://127.0.0.1:${HTTP_PORT}/healthz"
-healthy=0
-for attempt in $(seq 1 60); do
-  if curl -fsS --connect-timeout 2 --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then
-    healthy=1
-    break
-  fi
-  sleep 2
-done
-[[ "$healthy" -eq 1 ]] || rollback "Health check failed at $HEALTH_URL."
+printf '%s\n' "$TARGET_SHA" > $STATE_DIR/deployed-sha.tmp
+install -m 0444 -o root -g root $STATE_DIR/deployed-sha.tmp $STATE_DIR/deployed-sha
+rm -f $STATE_DIR/deployed-sha.tmp
 
-printf '%s\n' "$TARGET_SHA" > /var/lib/arsy/deployed-sha.tmp
-install -m 0444 -o root -g root /var/lib/arsy/deployed-sha.tmp /var/lib/arsy/deployed-sha
-rm -f /var/lib/arsy/deployed-sha.tmp
-
-install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
-install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
-install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
-install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
-install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
-install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
-install -m 0755 scripts/arsy-backup.sh /usr/local/sbin/arsy-backup
-install -m 0755 scripts/arsy-restore-drill.sh /usr/local/sbin/arsy-restore-drill
+install -m 0755 scripts/arsy-deploy.sh "$HOST_BIN_DIR/arsy-deploy"
+install -m 0755 scripts/arsy-update.sh "$HOST_BIN_DIR/arsy-update"
+install -m 0755 scripts/arsy-doctor.sh "$HOST_BIN_DIR/arsy-doctor"
+install -m 0755 scripts/arsy-domain.sh "$HOST_BIN_DIR/arsy-domain"
+install -m 0755 scripts/arsy-env-migrate.sh "$HOST_BIN_DIR/arsy-env-migrate"
+install -m 0755 scripts/arsy-network.sh "$HOST_BIN_DIR/arsy-network.sh"
+install -m 0755 scripts/arsy-backup.sh "$HOST_BIN_DIR/arsy-backup"
+install -m 0755 scripts/arsy-restore-drill.sh "$HOST_BIN_DIR/arsy-restore-drill"
 
 log "SUCCESS: $TARGET_SHA is deployed and healthy."
 compose ps

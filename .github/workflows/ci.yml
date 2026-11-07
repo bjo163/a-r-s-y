@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -68,5 +70,6 @@ jobs:
           bash scripts/tests/env-migrate.test.sh
           bash scripts/tests/network-validation.test.sh
           bash scripts/tests/domain-helper.test.sh
+          bash scripts/tests/deploy-lifecycle.test.sh
       - name: Validate documentation links
         run: node scripts/check-doc-links.mjs
