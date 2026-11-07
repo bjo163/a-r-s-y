@@ -9,3 +9,5 @@ node_modules/
 dist/
 build/
 coverage/
+site/version.json
+site/version.json.tmp
