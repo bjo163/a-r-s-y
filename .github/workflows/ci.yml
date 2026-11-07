@@ -31,6 +31,7 @@ jobs:
           npm install --no-audit --no-fund
           npm test
           node --check src/server.js
+          node --check public/app.js
 
       - name: Validate shell scripts
         shell: bash
@@ -40,3 +41,4 @@ jobs:
           bash -n scripts/arsy-deploy.sh
           bash -n scripts/arsy-update.sh
           bash -n scripts/arsy-doctor.sh
+          bash -n scripts/arsy-domain.sh
