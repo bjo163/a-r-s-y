@@ -63,6 +63,7 @@
 
   const onboardingForm = document.getElementById('onboarding-form');
   if (onboardingForm) {
+    (async function () {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const mode = document.getElementById('access-mode');
     const domainFields = document.getElementById('domain-fields');
@@ -103,6 +104,7 @@
         window.location.assign(result.redirect || '/dashboard');
       } catch (error) { message.textContent = error.message; message.classList.add('error'); }
     });
+    })();
   }
 
   const updateCard = document.getElementById('update-card');
