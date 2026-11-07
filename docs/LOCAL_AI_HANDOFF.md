@@ -98,7 +98,7 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 
 ### P0 — CI and automated verification
 1. Workflow has Compose config validation, PostgreSQL disposable integration, Caddy validation, Bash syntax, isolated migration/domain/deploy regression and Markdown link checking.
-2. Latest main commit 0e9041e315971d9246fe46e0ee39c5d65d9abca7 generated Actions run 42368111729; at the latest check the validate job was queued with runner_id=0 and zero executed steps. This is neither a pass nor a test failure. An Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status.
+2. Main base SHA for PR #1 is `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`; the current release-hardening PR head is `0502ff30a3696a596fb6fb3eab87efffb5c997f1`. Latest PR workflow run `42394245690` is queued; its `validate` job has no runner assignment or executed steps. Same-SHA push run `42394241695` was cancelled by concurrency. The combined commit status has no completed status entries. This is not a CI pass or test failure.
 3. Do not lower permissions or add secrets. A repository/org Actions administrator must check runner availability, quotas and Actions policy if the queue remains stalled.
 4. After CI runs, fix observed failures, rerun on resulting SHA, and retain actual logs.
 
@@ -178,8 +178,9 @@ Never use `docker compose down -v` as routine repair/update; it deletes the data
 ## 8. Verification snapshot
 
 - Main base SHA for the current release-hardening PR: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
-- PR #1 is open from `fix/release-config-validation`; current branch head at this snapshot: `e5bc6f07e4bf62a96c7b5249c67e681dd1bcdfdf`.
-- Latest observed run before the concurrency update: `42393572983` on `b239272`; validate was queued with no runner assignment or steps. GitHub Status showed Actions operational and no Nov 7 incident, so the cause remains unconfirmed and may be repository/account-specific. The workflow now groups push and PR runs by the same branch ref to avoid duplicate runner requests. Inspect the latest run on the resulting branch head; queued is not a pass or a test failure.
+- PR #1 head: `0502ff30a3696a596fb6fb3eab87efffb5c997f1` on `fix/release-config-validation`.
+- Latest run `42394245690` (pull_request) is queued with no runner assignment or executed steps. The same-SHA push run `42394241695` was cancelled by concurrency. Neither is a test pass; cancellation is not a failure. Combined commit status currently has no completed status entries.
+- Workflow concurrency now groups push and PR runs by the same branch ref. This reduces duplicate runner requests but has not resolved the queue. Exact cause is unconfirmed; repository/org Actions administrator must inspect Actions policy and hosted-runner availability/quotas.
 - CI includes Node unit/integration tests, PostgreSQL 17 service, Compose/Caddy validation, shell regression tests, docs link checking, production npm audit, CycloneDX SBOM artifact generation, and production control-plane image build. None of these CI gates has been verified on this branch until the workflow executes and logs/artifacts are reviewed.
 - PR #1 is the active release-hardening PR; do not use the historical statement that the PR collection was empty.
 - No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
