@@ -24,10 +24,13 @@ case "${ID:-}" in
     ;;
 esac
 
-if [[ -f /var/lib/arsy/deployed-sha ]]; then
+if [[ -f /var/lib/arsy/deployed-sha && "${1:-}" != "--repair" ]]; then
   log "A-R-S-Y is already installed."
-  log "Use 'sudo arsy-update' to check for an update. Nothing has been changed."
+  log "Use 'sudo arsy-update' to check for an update, or run 'sudo bash install.sh --repair' for an explicit repair/reinstall."
   exit 0
+fi
+if [[ -n "${1:-}" && "${1:-}" != "--repair" ]]; then
+  die "Usage: sudo bash install.sh [--repair]"
 fi
 
 log "Installing basic tools."
@@ -88,7 +91,8 @@ ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
 ensure_env ARSY_COOKIE_SECURE "false"
 chmod 0600 .env
 
-install -d -m 0750 /var/log/arsy /var/lib/arsy
+install -d -m 0750 /var/log/arsy
+install -d -m 0755 /var/lib/arsy
 install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
