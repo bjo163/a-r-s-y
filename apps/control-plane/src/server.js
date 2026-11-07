@@ -581,7 +581,7 @@ app.post('/api/onboarding/dns-check', { preHandler: requireApiAuth }, async (req
   );
   return reply.send({
     ok: true, ...diagnostic,
-    message: a.length || aaaa.length ? 'DNS record ditemukan.' : 'Belum ada A/AAAA record yang terlihat.'
+    message: dnsErrors.length ? 'DNS resolver sedang tidak tersedia; coba periksa kembali nanti.' : a.length || aaaa.length ? 'DNS record ditemukan.' : 'Belum ada A/AAAA record yang terlihat.'
   });
 });
 

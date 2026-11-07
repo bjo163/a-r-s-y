@@ -186,6 +186,14 @@ test('disposable PostgreSQL API lifecycle and security integration', { skip: !en
       });
       assert.equal(wrongOrigin.status, 403);
 
+      const invalidIpv4 = await request('/api/onboarding/dns-check', {
+        method: 'POST',
+        cookie: sessionCookie,
+        csrf,
+        body: { hostname: 'panel.example.com', targetIpv4: '999.1.1.1' }
+      });
+      assert.equal(invalidIpv4.status, 400);
+
       const invalidTimezone = await request('/api/onboarding/profile', {
         method: 'POST',
         cookie: sessionCookie,

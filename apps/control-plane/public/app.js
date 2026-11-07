@@ -92,8 +92,11 @@
           result.matches === false ? ' · IPv4 belum cocok' :
           result.aaaa.length ? ' · AAAA ditemukan' : ' · A record ditemukan';
         const checkedAt = result.checkedAt ? ' · Checked ' + new Date(result.checkedAt).toLocaleString() : '';
+        const resolverState = Array.isArray(result.dnsErrors) && result.dnsErrors.length
+          ? ' · Resolver: ' + result.dnsErrors.join('; ')
+          : '';
         resultBox.textContent = 'A: ' + (result.a.join(', ') || '—') +
-          ' · AAAA: ' + (result.aaaa.join(', ') || '—') + status + checkedAt +
+          ' · AAAA: ' + (result.aaaa.join(', ') || '—') + status + resolverState + checkedAt +
           '. Ini hanya diagnostic; DNS tidak diubah.'
 
       } catch (error) { resultBox.textContent = error.message; }
