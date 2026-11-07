@@ -179,7 +179,7 @@ Never use `docker compose down -v` as routine repair/update; it deletes the data
 
 - Main base SHA for the current release-hardening PR: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
 - PR #1 is open from `fix/release-config-validation`; current branch head at this snapshot: `e5bc6f07e4bf62a96c7b5249c67e681dd1bcdfdf`.
-- Latest observed PR Actions run: `42393478418` (pending); push run: `42393473949` (queued). The validate job has no runner assignment or executed steps. Neither run is a pass or test failure.
+- Latest observed run before the concurrency update: `42393572983` on `b239272`; validate was queued with no runner assignment or steps. GitHub Status showed Actions operational and no Nov 7 incident, so the cause remains unconfirmed and may be repository/account-specific. The workflow now groups push and PR runs by the same branch ref to avoid duplicate runner requests. Inspect the latest run on the resulting branch head; queued is not a pass or a test failure.
 - CI includes Node unit/integration tests, PostgreSQL 17 service, Compose/Caddy validation, shell regression tests, docs link checking, production npm audit, CycloneDX SBOM artifact generation, and production control-plane image build. None of these CI gates has been verified on this branch until the workflow executes and logs/artifacts are reviewed.
 - PR #1 is the active release-hardening PR; do not use the historical statement that the PR collection was empty.
 - No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
