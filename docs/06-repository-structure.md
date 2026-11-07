@@ -1,42 +1,76 @@
-# A-R-S-Y repository structure
+# A-R-S-Y — Repository Structure and Module Boundaries
 
-Start with a modular monolith in one repository. Split deployables only when ownership, deployment cadence, scale, or a security boundary demands it.
+## Current repository (implemented foundation)
 
-~~~text
+```text
+.
+├── AGENTS.md                         # mandatory local AI/coding-agent instructions
+├── README.md
+├── install.sh                        # host preflight and install
+├── compose.yaml                      # single-VPS runtime
+├── Caddyfile                         # default gateway template
+├── apps/
+│   └── control-plane/
+│       ├── src/                      # Fastify app and security helpers
+│       ├── public/                   # local browser JS/CSS
+│       ├── test/                     # Node test runner
+│       ├── schema.sql                # current PostgreSQL bootstrap schema
+│       └── Dockerfile
+├── scripts/
+│   ├── arsy-deploy.sh
+│   ├── arsy-update.sh
+│   ├── arsy-doctor.sh
+│   └── arsy-domain.sh
+├── brand/                            # SVG identity and design tokens
+├── docs/                             # narrative, blueprint, operations, handoff
+└── .github/workflows/                # CI validation
+```
+
+Keep this structure simple while the product is a single-VPS modular monolith.
+
+## Target structure (future; do not scaffold prematurely)
+
+When real domain boundaries and ownership justify it, the repository may evolve toward:
+
+```text
 apps/
-  console/                 # Next.js customer/operator portal
+  console/                            # customer/operator UI if separate app is justified
 services/
-  control-api/             # Fastify modular monolith
-  control-worker/          # provisioning and reconciliation
-  node-agent/              # future Rust/Go agent; do not stub early
+  control-api/                        # modular control-plane API
+  control-worker/                     # asynchronous provisioning/reconciliation
+  node-agent/                          # future Rust/Go agent; only after trust design
 packages/
-  contracts/               # OpenAPI, JSON Schema, typed contracts
-  sdk-typescript/           # public customer SDK
-  ui/                       # ARSY design system
+  contracts/                          # OpenAPI, JSON Schema, generated types
+  sdk-typescript/                     # public customer SDK
+  ui/                                  # shared ARSY design system
 infra/
-  compose/                  # single VPS alpha
-  ansible/                  # host provisioning and hardening
-  opentofu/                 # provider resources where supported
-  examples/                 # reference deployment topologies
-brand/                      # SVG mark, wordmark, design tokens
-docs/                       # narrative, brand, architecture, operations
+  compose/                             # local/single-node runtime
+  ansible/                             # repeatable host configuration
+  opentofu/                            # provider resources where supported
+  examples/                            # reference topologies
+brand/
+docs/
 .github/
-  ISSUE_TEMPLATE/
-  workflows/
-  PULL_REQUEST_TEMPLATE.md
-~~~
+```
+
+This is a possible target, not a task list. Do not create empty packages, placeholder apps, unused abstractions, or speculative services merely to match the diagram.
 
 ## Module boundaries
 
-- The console talks only to the public control API; it never connects directly to PostgreSQL.
-- The control API owns authorization and domain rules.
-- The worker consumes jobs and reconciles desired state.
-- Contracts are the source of truth for public API shapes.
-- Infrastructure adapters isolate PowerDNS, Envoy, FRP, and storage-specific APIs.
-- Node agents receive narrowly scoped commands and never receive unrestricted control-plane database credentials.
+- Browser UI calls the Fastify API; it never connects directly to PostgreSQL.
+- API owns authentication, authorization, validation, and domain rules.
+- PostgreSQL is the durable source of truth.
+- Host-level operations remain in reviewed CLI scripts, not shell commands exposed to the web process.
+- Infrastructure adapters isolate engine-specific APIs when those products are implemented.
+- Future workers and node agents receive narrowly scoped commands and never receive unrestricted database or host credentials.
+- Contracts become authoritative before exposing a stable public API.
 
-## Initial API modules
+## Rules for extracting modules
 
-identity, tenancy, projects, catalog, domains, dns, edge, tunnels, secrets, usage, billing, audit, nodes, provisioning, and support.
+Extract a separate deployable only when at least one is demonstrated:
+- independent security/trust boundary;
+- independent scaling or availability requirement;
+- separate ownership/release cadence;
+- a concrete operational reason the modular monolith cannot meet.
 
-Keep them as internal modules until independent deployment or scaling is justified.
+Do not add Next.js, Keycloak, Kubernetes, a worker, node agent, or SDK just because they appear in future architecture notes.
