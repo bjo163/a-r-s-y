@@ -132,7 +132,7 @@ function dashboardPage(user, csrf) {
     '<article class="service-card"><div class="service-icon">⤳</div><div><h3>ARSY Passage</h3><p>Secure tunnel and private origin.</p></div><span class="service-state planned">PLANNED</span></article>' +
     '<article class="service-card"><div class="service-icon">▤</div><div><h3>ARSY Vault</h3><p>Object storage and buckets.</p></div><span class="service-state planned">PLANNED</span></article></div>' +
     '<section class="update-card" id="update-card" hidden><div><div class="eyebrow">VERSION CONTROL</div><h2>Update available</h2><p id="update-copy">A newer A-R-S-Y version is ready. Nothing changes without your approval.</p><p class="command-line" id="update-command" hidden></p></div><div class="update-actions"><button id="update-now" class="button button-primary" type="button">Review update</button><button id="update-later" class="button button-quiet" type="button">Later</button><button id="copy-update" class="button button-quiet" type="button" hidden>Copy command</button></div></section>' +
-    '<div class="bottom-grid"><article class="info-card"><div class="eyebrow">OPERATOR IDENTITY</div><h3>Superadmin protected</h3><p>' + safeEmail + '</p><span class="pill pill-live">FULL PLATFORM ACCESS</span></article>' +
+    '<div class="bottom-grid"><article class="info-card"><div class="eyebrow">OPERATOR IDENTITY</div><h3>Superadmin protected</h3><p>' + safeEmail + '</p><span class="pill pill-live">PLATFORM OWNER</span></article>' +
     '<article class="info-card"><div class="eyebrow">NEXT STEP</div><h3>Configure your first services</h3><p>Core foundation is running. DNS, edge, tunnel, storage and compute will be enabled in later milestones.</p></article></div>' +
     '<p class="dashboard-version">A-R-S-Y FOUNDATION · ONE COMMAND PLANE. OPEN BY DESIGN.</p></section></main>';
   return page('Command center', body, csrf);
@@ -142,7 +142,9 @@ function cookieValue(header, name) {
   for (const part of String(header || '').split(';')) {
     const item = part.trim();
     const index = item.indexOf('=');
-    if (index > 0 && item.slice(0, index) === name) return decodeURIComponent(item.slice(index + 1));
+    if (index > 0 && item.slice(0, index) === name) {
+      try { return decodeURIComponent(item.slice(index + 1)); } catch { return ''; }
+    }
   }
   return '';
 }
@@ -317,7 +319,7 @@ app.get('/assets/:asset', async (request, reply) => {
   if (!item) return reply.code(404).send('Not found');
   try {
     const content = await readFile(join(publicDir, item[0]));
-    reply.header('Cache-Control', 'public, max-age=3600');
+    reply.header('Cache-Control', 'public, max-age=300, must-revalidate');
     return reply.type(item[1]).send(content);
   } catch {
     return reply.code(404).send('Not found');
