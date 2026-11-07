@@ -55,8 +55,16 @@ log "Installing basic tools."
 apt-get update
 apt-get install -y ca-certificates curl git openssl
 
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
-  log "Installing Docker Engine and Compose from the official Docker repository."
+NEED_DOCKER_CLI=0
+NEED_COMPOSE_PLUGIN=0
+command -v docker >/dev/null 2>&1 || NEED_DOCKER_CLI=1
+if [[ "$NEED_DOCKER_CLI" -eq 0 ]] && ! docker compose version >/dev/null 2>&1; then
+  NEED_COMPOSE_PLUGIN=1
+fi
+
+if [[ "$NEED_DOCKER_CLI" -eq 1 || "$NEED_COMPOSE_PLUGIN" -eq 1 ]]; then
+  log "Configuring the official Docker APT repository."
+  [[ -n "${VERSION_CODENAME:-}" ]] || die "Could not determine the OS release codename."
   apt-get install -y gnupg
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL "https://download.docker.com/linux/$DISTRO/gpg" -o /etc/apt/keyrings/docker.asc
@@ -64,10 +72,13 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
   printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
     "$(dpkg --print-architecture)" "$DISTRO" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
   apt-get update
-  if command -v docker >/dev/null 2>&1; then
-    apt-get install -y docker-compose-plugin
-  else
+
+  if [[ "$NEED_DOCKER_CLI" -eq 1 ]]; then
+    log "Installing Docker Engine, CLI, Buildx, and Compose."
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  else
+    log "Docker is already installed; adding only the missing Compose v2 plugin."
+    apt-get install -y docker-compose-plugin
   fi
 fi
 
