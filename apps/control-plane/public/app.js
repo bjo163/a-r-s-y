@@ -60,6 +60,51 @@
     });
   }
 
+
+  const onboardingForm = document.getElementById('onboarding-form');
+  if (onboardingForm) {
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const mode = document.getElementById('access-mode');
+    const domainFields = document.getElementById('domain-fields');
+    const syncMode = function () { domainFields.hidden = mode.value === 'private'; };
+    mode.addEventListener('change', syncMode); syncMode();
+    const saved = await fetch('/api/onboarding/profile', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+    if (saved && saved.profile) {
+      Object.entries(saved.profile).forEach(([key, value]) => {
+        const field = onboardingForm.elements.namedItem(key);
+        if (!field) return;
+        if (field.type === 'checkbox') field.checked = Boolean(value);
+        else field.value = value;
+      });
+      syncMode();
+    }
+    const dnsButton = document.getElementById('dns-check');
+    dnsButton.addEventListener('click', async function () {
+      const resultBox = document.getElementById('dns-result');
+      resultBox.textContent = 'Memeriksa DNS...';
+      try {
+        const result = await postJson('/api/onboarding/dns-check', {
+          hostname: onboardingForm.elements.hostname.value,
+          targetIpv4: onboardingForm.elements.targetIpv4.value
+        }, csrf);
+        resultBox.textContent = 'A: ' + (result.a.join(', ') || '—') + ' · AAAA: ' + (result.aaaa.join(', ') || '—') +
+          (result.matches === null ? '' : result.matches ? ' · IPv4 cocok' : ' · IPv4 belum cocok');
+      } catch (error) { resultBox.textContent = error.message; }
+    });
+    onboardingForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const message = document.getElementById('wizard-message');
+      const data = Object.fromEntries(new FormData(onboardingForm).entries());
+      data.proxyTls = onboardingForm.elements.proxyTls.checked;
+      message.textContent = 'Menyimpan profil...';
+      try {
+        const result = await postJson('/api/onboarding/profile', data, csrf);
+        message.textContent = result.message;
+        window.location.assign(result.redirect || '/dashboard');
+      } catch (error) { message.textContent = error.message; message.classList.add('error'); }
+    });
+  }
+
   const updateCard = document.getElementById('update-card');
   if (updateCard) {
     const updateCopy = document.getElementById('update-copy');
