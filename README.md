@@ -3,89 +3,86 @@
 **One command plane. Open by design.**  
 *Satu kendali. Infrastruktur terbuka.*
 
-A-R-S-Y is an open hybrid-cloud control plane inspired by the MoonWitness coordination-hub narrative. It aims to make infrastructure understandable, portable, auditable, and operable through one customer experience and documented APIs.
-
-> MoonWitness is the narrative universe. A-R-S-Y is its practical infrastructure layer. ZILL Sentinel is the internal security and observability motif. The Arsy reference is symbolic and does not claim to depict or represent a sacred or metaphysical reality.
+A-R-S-Y is an open hybrid-cloud control plane inspired by the MoonWitness coordination-hub narrative. MoonWitness is the wider narrative universe; A-R-S-Y is its practical infrastructure layer; ZILL Sentinel is the security and observability motif. The Arsy reference is symbolic and does not claim to depict or represent a sacred or metaphysical reality.
 
 ## Current status
 
-**Status: Foundation / pre-alpha**
+**Foundation / pre-alpha · single VPS**
 
-The first release is deliberately a **single-VPS foundation**, not yet a complete cloud provider. It installs Docker Engine/Compose if needed, deploys a small loopback-only Caddy gateway, validates a health endpoint, and supports exact-commit automatic deployment from GitHub Actions.
+The first build provides a small Caddy gateway, a health endpoint, version metadata, a simple update notice, and a consent-based update command. It is not yet the complete cloud control plane.
 
-The customer portal, control API, identity integration, DNS, WAF, tunnel, storage, compute and billing are planned modules; they must not be presented as already implemented.
+The customer console, Core API, identity, tenant management, DNS, WAF, tunnel, storage, compute and billing are planned modules; they must not be presented as implemented.
 
-## Product direction
-
-| Module | Responsibility | Status |
-|---|---|---|
-| ARSY Core | Control API, tenancy, provisioning, audit | Planned / build next |
-| ARSY Console | Customer and operator portal | Planned |
-| ARSY Name | Authoritative DNS and zone lifecycle | Lab after core |
-| ARSY Edge | Routing, TLS, cache | Single-node foundation gateway only |
-| ARSY Shield | WAF, rate limits, security policy | Planned |
-| ARSY Passage | Authenticated private-origin tunnel | Planned |
-| ARSY Vault | S3-compatible object storage | Deferred to independent capacity |
-| ARSY Compute | Container and VM lifecycle | Deferred to isolated nodes |
-| ZILL Sentinel | Security telemetry and event correlation | Internal subsystem concept |
-
-## Install on one VPS
+## Install
 
 Supported: Ubuntu 22.04+ or Debian 12+ (amd64/arm64).
 
-Recommended alpha host: 8 vCPU, 16 GB RAM, 200 GB NVMe. A smaller VPS can be used for development after reviewing resource availability.
+Recommended alpha VPS: 8 vCPU, 16 GB RAM, 200 GB NVMe.
 
-```bash
-# Download the installer, inspect it, then execute as root.
-curl -fsSLo install.sh https://raw.githubusercontent.com/bjo163/a-r-s-y/main/install.sh
-less install.sh
-sudo bash install.sh
-```
+\`\`\`bash
+curl -fsSLo /tmp/arsy-install.sh https://raw.githubusercontent.com/bjo163/a-r-s-y/main/install.sh
+less /tmp/arsy-install.sh
+sudo bash /tmp/arsy-install.sh
+\`\`\`
 
-The default listener is `127.0.0.1:18080`; it does not take over public ports 80/443 or conflict with an existing Coolify/Dokploy ingress. Inspect it through an SSH tunnel:
+The installer preserves existing Docker/Compose and existing \`.env\` where possible. It uses the loopback-only listener \`127.0.0.1:18080\` by default and does not take over ports 80/443.
 
-```bash
+Inspect through an SSH tunnel:
+
+\`\`\`bash
 ssh -L 18080:127.0.0.1:18080 YOUR_OPERATOR_USER@YOUR_VPS_HOST
-```
+\`\`\`
 
-Open `http://127.0.0.1:18080`; health endpoint: `/healthz`.
+Open \`http://127.0.0.1:18080\`; health endpoint: \`/healthz\`.
 
-See [Installation](docs/INSTALLATION.md) for the optional GitHub deploy key and host configuration.
+## Updates: detect first, ask, then update
 
-## Automatic deployment
+A-R-S-Y must never silently update itself.
 
-`.github/workflows/deploy.yml` deploys the exact commit on every push to `main`, every published GitHub Release, or a manual workflow run. It uses native OpenSSH, pinned host keys, a forced-command deploy key, serialized deployments, health checks, and best-effort rollback.
+- The application checks whether a newer commit is available.
+- If one is available, it shows an **Update available** notice and asks whether you want to update.
+- **Later** leaves the running version untouched.
+- **Update now** asks for confirmation.
+- For this foundation build, after approval run \`sudo arsy-update\` in the VPS terminal. The authenticated one-click update action will be connected when the Core API is implemented.
 
-Required repository Actions secrets:
+Manual check:
 
-- `ARSY_DEPLOY_HOST`
-- `ARSY_DEPLOY_USER` (`arsy-deploy`)
-- `ARSY_DEPLOY_SSH_KEY` (private Ed25519 key)
-- `ARSY_DEPLOY_KNOWN_HOSTS` (verified pinned host-key entry)
+\`\`\`bash
+sudo arsy-update
+\`\`\`
 
-Detailed setup: [Automatic deployment](docs/AUTO_DEPLOY.md).
+The command compares the installed version with GitHub \`main\`, shows the available commit and asks \`Do you want to update A-R-S-Y now? [y/N]\`. Only an explicit yes starts deployment. No means no changes.
 
-## One-VPS safety boundaries
+## GitHub behavior
 
-- No Kubernetes or CloudStack on the first VPS by default.
-- No customer arbitrary-code execution on the control-plane host.
-- No public production DNS delegation to one nameserver failure domain.
-- No global CDN, Anycast, volumetric DDoS, HA, or SLA claims without network capacity and test evidence.
-- Customer storage and backups must not depend solely on the same VPS disk.
-- Optional VPS/node expansion is supported as a future architecture direction, not an installation requirement.
+- Pushes and merges to \`main\` run CI checks only.
+- Publishing a GitHub Release does not deploy to the VPS.
+- No GitHub SSH deploy key or VPS deployment secrets are required.
+- A new commit only becomes an available update; it is never installed without approval.
+
+## Safety boundaries for one VPS
+
+- No Kubernetes or CloudStack required on the first VPS.
+- No arbitrary customer-code execution on the control-plane host.
+- No production DNS delegation to one nameserver failure domain.
+- No global CDN, Anycast, volumetric DDoS, HA, or SLA claims without the required network and test evidence.
+- Customer data requires encrypted backups outside the VPS/provider failure domain.
 
 ## Repository layout
 
-```text
-install.sh                  # single-VPS bootstrap
-compose.yaml                # minimal foundation gateway
-Caddyfile                   # loopback-only HTTP health + static landing page
-scripts/                    # deploy, SSH forced-command gate, diagnostics
-.github/workflows/          # main/release automatic deployment
-brand/                      # SVG mark, wordmark, design tokens
-docs/                       # narrative, architecture, install, security, roadmap
-```
+\`\`\`text
+install.sh                 # simple single-VPS bootstrap
+compose.yaml               # minimal foundation gateway
+Caddyfile                  # loopback-only HTTP health + landing page
+scripts/arsy-deploy.sh     # low-level exact-commit updater
+scripts/arsy-update.sh     # checks version and asks before updating
+scripts/arsy-doctor.sh     # diagnostics
+site/                      # landing page and version notice
+.github/workflows/ci.yml   # CI only; never deploys
+brand/                     # SVG mark, wordmark, design tokens
+docs/                      # narrative, architecture, update policy, security
+\`\`\`
 
 ## License
 
-Core source: AGPL-3.0-only. Documentation: CC-BY-SA-4.0 is the intended policy; verify individual file notices before reuse. Brand marks are not granted as trademarks by the source license.
+Core source: AGPL-3.0-only. Documentation: CC-BY-SA-4.0 is the intended policy; verify individual file notices before reuse. Brand marks are subject to a separate trademark policy.
