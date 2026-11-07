@@ -101,6 +101,7 @@
       try {
         const result = await postJson('/api/onboarding/profile', data, csrf);
         message.textContent = result.message;
+        if (result.nextStep) window.alert(result.nextStep);
         window.location.assign(result.redirect || '/dashboard');
       } catch (error) { message.textContent = error.message; message.classList.add('error'); }
     });
