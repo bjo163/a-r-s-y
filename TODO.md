@@ -10,7 +10,7 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Latest main commit checked: 9bf2d20. Actions run 42370496335 is pending; its validate job is queued with runner_id=0 and no executed steps. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
+  - Latest main commit before release-hardening branch: 9bf2d20. Main run 42370496335 and PR runs 42372320448 / 42372324516 were queued with no runner assignment and no executed steps at last observation. This is neither a pass nor a test failure. Re-check the newest run for the latest branch SHA; earlier runs may be cancelled by the workflow concurrency group when a new commit is pushed. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
   - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
   - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
@@ -26,7 +26,7 @@ Status key:
   - Pending actual CI execution and failure-log review. Never run against a live database.
 
 - [~] P0.4 — Fail-closed deployment environment validation
-  - Added a dedicated validator for required/unique .env keys, non-empty secrets, PostgreSQL identifiers, listener port ranges/uniqueness, supported bind addresses and cookie mode.
+  - Added a dedicated validator for required/unique .env keys, non-empty secrets, PostgreSQL identifiers, listener port ranges/uniqueness, supported bind addresses and cookie mode. Follow-up audit also fixed both fresh-install and deploy/repair paths to seed ARSY_ENV_LAYOUT_VERSION=2 before validation, with a regression assertion in the config test.
   - Installer validates configuration before deployment; update/repair validates before pulling images or changing the stack and restores the original .env if validation fails.
   - Negative tests cover empty/duplicate keys, invalid ports/binds, duplicate listener ports and unsafe database identifiers. CI execution remains pending.
 
@@ -79,7 +79,7 @@ Status key:
 - [x] Added docs/INDEX.md as the canonical document map and source-of-truth precedence.
 - [~] Cross-document links have a CI checker and are included in CI; workflow run is pending.
 - [x] Roadmap milestones declare entry and exit gates.
-- [~] Handoff verification snapshot is synchronized through main commit 9bf2d20; refresh again after new CI or VPS evidence.
+- [~] Full handoff restored from main and augmented with release-hardening branch notes; refresh again after new CI or VPS evidence.
 
 ## Explicitly not next
 
