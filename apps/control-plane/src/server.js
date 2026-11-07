@@ -472,7 +472,12 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   const profile = { workspaceName, contactEmail, installationName, environment, timezone, language, nodeName, accessMode, hostname: accessMode==='private'?'':hostname, targetIpv4, proxyType, proxyTls: b.proxyTls === true || b.proxyTls === 'true' };
   await pool.query('UPDATE arsy_installation_profile SET profile=$1::jsonb, onboarding_complete=TRUE, updated_at=NOW() WHERE id=1', [JSON.stringify(profile)]);
   await recordAudit(request.arsySession.user.id, 'onboarding.completed', request, { accessMode, environment, hostname: profile.hostname || null });
-  return reply.send({ ok: true, redirect: '/dashboard', message: 'Profil instalasi tersimpan.' });
+  const nextStep = accessMode === 'public'
+    ? 'Untuk menerapkan domain setelah DNS A record mengarah ke VPS, jalankan: sudo arsy-domain apply --hostname ' + hostname + (targetIpv4 ? ' --ipv4 ' + targetIpv4 : '')
+    : accessMode === 'proxy'
+      ? 'Konfigurasikan reverse proxy ke http://127.0.0.1:18080. Panduan: sudo arsy-domain proxy --hostname ' + hostname
+      : 'Akses privat tetap aktif melalui SSH tunnel.';
+  return reply.send({ ok: true, redirect: '/dashboard', message: 'Profil instalasi tersimpan.', nextStep });
 });
 
 app.post('/api/onboarding/dns-check', { preHandler: requireApiAuth }, async (request, reply) => {
