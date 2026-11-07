@@ -77,6 +77,9 @@ rm -f /var/lib/arsy-deployed-sha.tmp
 if [[ -f scripts/arsy-deploy.sh ]]; then
   install -m 0755 scripts/arsy-deploy.sh /usr/local/sbin/arsy-deploy
 fi
+if [[ -f scripts/arsy-update.sh ]]; then
+  install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
+fi
 
 printf '{ "current_sha": "%s", "deployed_at": "%s" }\n' "$TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.json.tmp
 install -m 0644 site/version.json.tmp site/version.json
