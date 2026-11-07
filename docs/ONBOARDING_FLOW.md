@@ -160,7 +160,7 @@ The supported initial mode is:
 
 - Private access through SSH tunnel — selected by default and fully supported now.
 
-Allow the operator to record a future intention to use a public HTTPS domain, but label it as planned and do not imply that DNS or TLS has been configured.
+Collect the operator's preferred panel access mode. Support private SSH-tunnel access immediately; design public-domain and existing-reverse-proxy modes as explicit guided setup paths. Never imply DNS or TLS is configured until independently verified.
 
 Do not request DNS provider API tokens, cloud credentials, private SSH keys, or certificates in this onboarding phase. Public domain provisioning should become a separate guided flow only after the feature exists and can verify DNS, port reachability, and certificate health.
 
@@ -273,3 +273,216 @@ Do not start domain automation, remote-node enrollment, backup-provider credenti
 - Secrets never appear in browser responses, logs, diagnostics, or audit metadata.
 - The dashboard shows truthful health and readiness states.
 - No update, public exposure, firewall change, or destructive operation occurs without explicit operator approval.
+
+
+## 9. Architecture decision — hybrid CLI + web onboarding
+
+**Decision: CLI installs and verifies the host foundation; the web wizard configures the installation profile and network identity.**
+
+Do not make the CLI the primary questionnaire. Do not let the web application perform unrestricted host administration.
+
+### CLI responsibilities
+
+The CLI is responsible for tasks that require host-level access:
+
+- Read-only preflight and compatibility checks.
+- Detect existing Docker, Compose, A-R-S-Y installations, reverse proxies, and port conflicts.
+- Install missing trusted prerequisites after explicit confirmation.
+- Generate and protect secrets.
+- Create persistent directories and volumes.
+- Deploy the Core stack in a private-safe default mode.
+- Collect a minimal host-facts snapshot.
+- Verify Core and database health.
+- Print the private URL, SSH tunnel instructions, setup key, and diagnostic commands.
+
+The default CLI should ask only a small number of questions:
+1. Confirm the preflight summary and the changes to be made.
+2. Confirm installation after showing the exact actions.
+3. Optionally choose a non-default install directory or local panel port if the defaults conflict.
+
+Do not ask for organization name, admin profile, domain provider credentials, DNS records, API keys, SMTP credentials, or backup credentials in the CLI.
+
+### Web wizard responsibilities
+
+The web wizard is responsible for decisions and settings that benefit from validation and a guided interface:
+
+1. Create the first Superadmin.
+2. Create workspace / organization identity.
+3. Set installation profile and preferences.
+4. Name and label the local Core Node.
+5. Choose panel access mode.
+6. Enter and validate the control-panel domain when a public or reverse-proxy mode is selected.
+7. Review DNS, TLS, firewall, and port readiness.
+8. Review all settings and explicitly apply changes.
+9. Verify the final URL and show recovery instructions.
+
+The wizard must be resumable. The operator can finish initial identity setup, save progress, leave, and continue later.
+
+## 10. Network access modes and domain inventory
+
+The first-run wizard should show exactly three access modes. The first is fully supported by the current private foundation; the others become enabled only when their implementation and validation are complete.
+
+### Mode A — Private (default)
+
+- Access through SSH tunnel to the loopback listener.
+- No public domain is required.
+- No public ports are opened.
+- No public TLS certificate is requested.
+- Keep this mode available as a recovery path even after configuring a public hostname.
+
+This is the safest way to finish the first-run setup on a new VPS.
+
+### Mode B — Public domain, managed by A-R-S-Y
+
+The operator enters one required hostname, for example `panel.example.com`.
+
+A-R-S-Y:
+- Validates that the value is a hostname, not a URL or IP address.
+- Detects the VPS public IPv4/IPv6 when possible and asks the operator to confirm the target address.
+- Shows the required A record and, only when the VPS IPv6 route is confirmed, the optional AAAA record.
+- Checks current DNS answers and reports mismatches.
+- Checks whether host ports TCP 80 and 443 are available.
+- Explains that provider-level firewalls/security groups may need inbound TCP 80 and 443; the installer cannot reliably inspect every provider firewall.
+- Configures the managed Caddy gateway for the exact hostname only after review and confirmation.
+- Requests and verifies a publicly trusted TLS certificate.
+- Verifies HTTPS, redirect behavior, and application health.
+- Keeps the private SSH-tunnel path available.
+
+Caddy automatic HTTPS requires a public hostname, correct DNS, and reachability on the relevant external challenge ports. The standard HTTP-01 challenge requires TCP 80; TLS-ALPN-01 requires TCP 443. See the Caddy automatic HTTPS documentation.
+
+Do not silently take over ports 80/443. If another service is listening there, stop and present Mode C instead. Never stop or reconfigure an existing proxy automatically.
+
+### Mode C — Existing reverse proxy
+
+Use when Nginx, Caddy, Traefik, a hosting panel, or another trusted proxy already owns public ports 80/443.
+
+Collect:
+- Public control-panel hostname (required).
+- Reverse-proxy type (informational selection).
+- Whether TLS terminates at that proxy (must be confirmed).
+- Optional operator note / proxy location.
+
+A-R-S-Y remains on its private loopback listener. Show the exact upstream target and required proxy headers. Require HTTPS at the external proxy before marking the public panel URL as secure. Set the secure-cookie configuration only after the operator confirms that HTTPS is active.
+
+Do not request proxy admin credentials, private keys, certificate private material, or an API token in this first-run wizard.
+
+### Domain types — keep them separate
+
+| Domain type | Example | First-run handling |
+|---|---|---|
+| Control-panel hostname | `panel.example.com` | Configure now only for Mode B or C |
+| Application wildcard domain | `*.apps.example.com` | Explain as a later capability; do not activate without application routing and tenant isolation |
+| Separate API hostname | `api.example.com` | Not required; use the panel hostname and `/api` path initially |
+| Customer DNS zones | Customer-owned domains | Later ARSY Name workflow, separate from control-panel setup |
+| Marketing / documentation domain | `example.com` | Not part of VPS first-run setup |
+
+Do not ask for a wildcard domain as a required field. It can be recorded as a future intention only after clearly stating that no routing or DNS records are being created.
+
+## 11. Domain validation and application lifecycle
+
+The public-domain wizard must have visible, independently verifiable phases:
+
+1. **Hostname entered** — show the normalized hostname and allow correction.
+2. **Target address confirmed** — show detected public IPv4/IPv6 with its detection source; allow manual correction when detection is unavailable.
+3. **DNS instructions** — show the exact A record and optional AAAA record. Do not suggest an AAAA record if IPv6 is not routable to the VPS.
+4. **DNS check** — resolve current A/AAAA records and compare them with the confirmed target. Show each record's actual and expected value.
+5. **Port readiness** — check local port ownership and explain the external firewall/security-group requirement. Clearly distinguish host port availability from external reachability.
+6. **Review changes** — list hostname, DNS expectation, gateway changes, ports that will be bound, TLS behavior, and the continued private recovery route.
+7. **Explicit approval** — no network configuration changes before operator approval.
+8. **Apply** — validate Caddy configuration before activation, apply the fixed configuration, and request a certificate.
+9. **Verify** — check HTTPS, certificate validity, expected hostname, HTTP-to-HTTPS redirect, and Core health.
+10. **Complete or recover** — show the verified public URL only after success. On failure, retain or restore the prior private configuration and explain the precise blocker.
+
+DNS and TLS readiness states must be honest:
+- Not configured.
+- DNS pending.
+- DNS mismatch.
+- Waiting for provider firewall.
+- Port conflict.
+- Certificate pending.
+- Certificate failed.
+- HTTPS verified.
+
+Do not mark a domain ready merely because the operator entered it or clicked Continue.
+
+### DNS provider credentials
+
+The first release should use manual DNS instructions. Do not request a Cloudflare or other DNS API token until a supported provider integration exists and its permission scope is documented.
+
+A later provider integration may offer two distinct permissions:
+- DNS record management for a selected zone.
+- DNS-01 certificate challenge management.
+
+Those permissions must be least-privilege and optional. They are not needed for the initial manual A/AAAA + HTTP-01/TLS-ALPN flow.
+
+## 12. Safe host-side apply boundary
+
+The current web application runs without the Docker socket and must not be given unrestricted root access. Public-domain activation requires host-level changes (gateway port bindings and proxy configuration), so it needs a deliberately narrow host-side mechanism.
+
+Preferred architecture for one-click apply:
+- Install a small host-side A-R-S-Y bridge/helper during the CLI installation.
+- The helper accepts a strict, versioned request schema over a local-only channel.
+- Supported actions are allowlisted, for example: read host facts, validate network configuration, apply a panel hostname, and rollback the panel hostname.
+- It must not accept arbitrary shell commands, arbitrary file paths, arbitrary Compose project names, or arbitrary Docker API requests.
+- Domain inputs are validated as hostnames; file writes are limited to owned A-R-S-Y configuration paths.
+- Every apply request is tied to an authenticated Superadmin approval, expires, is idempotent, and cannot be replayed.
+- The helper validates generated configuration before reload/recreate, performs health checks, and rolls back to the prior known-good gateway configuration on failure.
+- It must never remove persistent volumes or change SSH access.
+- The host agent/helper must not open public listeners.
+
+Do not solve this by mounting `/var/run/docker.sock` into the web application container. Do not give the application a generic sudo shell.
+
+If the restricted host helper is not implemented yet, Mode B must remain visibly unavailable or require a clearly documented operator-run command. Do not present a fake one-click domain setup.
+
+## 13. Recommended first-run screen sequence
+
+1. **Welcome / system check** — explain private bootstrap and detected Core health.
+2. **Administrator account** — one-time bootstrap key, display name, email, password.
+3. **Workspace** — organization/workspace name, slug, operational contact, short description.
+4. **Installation profile** — installation name, Personal/Lab/Staging/Production label, region label, timezone, language.
+5. **Core Node** — suggested hostname-based label, role, detected resources, OS, Docker/Compose versions.
+6. **Panel access** — Private, Public domain managed by A-R-S-Y, or Existing reverse proxy.
+7. **Domain setup** — conditional; show only for Mode B or C. Include DNS records and live checks.
+8. **Security review** — enrollment closed, session protection, access mode, firewall and TLS truth, backup readiness, update-consent policy.
+9. **Review & apply** — complete summary and explicit confirmation for any host/network change.
+10. **Success** — show panel URL, private recovery method, Core node status, and remaining checklist.
+
+The wizard should support Back, Save and exit, Resume, and a final review. Do not save secrets in ordinary profile fields or render them again after initial submission.
+
+## 14. Current implementation gap and release gates
+
+The current foundation publishes only the private loopback gateway at `127.0.0.1:18080`. It does not yet bind public ports 80/443, configure a user-supplied hostname, run domain DNS checks, request a panel certificate, or provide the restricted host-side apply bridge.
+
+Therefore:
+- The current private installation and Superadmin bootstrap remain the supported path.
+- Domain fields and Mode B must not be marked implemented until the host helper, managed gateway changes, and certificate verification exist.
+- Mode C may be documented as a manual external reverse-proxy path, but must not be marked verified until HTTPS and secure-cookie behavior are tested.
+- A user who skips public domain setup must still complete onboarding and operate privately.
+- Never lock the operator out by removing the SSH-tunnel route before the public endpoint has passed verification.
+
+## 15. Implementation order
+
+1. Improve CLI preflight and explicit install confirmation.
+2. Add root-owned host facts snapshot with minimal data collection.
+3. Split account bootstrap from onboarding completion using additive migrations.
+4. Implement resumable workspace, installation, and Core Node wizard steps.
+5. Implement access-mode selection with Private mode as the working default.
+6. Design and test the restricted host bridge/helper and its threat model.
+7. Implement DNS/port readiness checks and domain validation.
+8. Implement managed Caddy public mode with apply/rollback and certificate verification.
+9. Implement external reverse-proxy instructions and HTTPS verification.
+10. Add dashboard onboarding checklist and regression tests.
+
+## 16. Additional domain acceptance criteria
+
+- A private installation can finish without owning or entering a domain.
+- Public-domain setup requires a syntactically valid FQDN and a confirmed target address.
+- A/AAAA records are checked against the confirmed target; invalid IPv6 is not advertised.
+- Port conflicts are detected before applying public gateway changes.
+- Existing reverse proxies are never stopped or overwritten automatically.
+- The public gateway is never activated without explicit operator approval.
+- TLS is not marked ready until certificate and hostname validation pass.
+- SSH-tunnel access remains available after public setup.
+- Failure during public configuration restores the previous private gateway configuration.
+- No arbitrary shell or Docker socket is exposed to the application.
+- Wildcard application domains and customer DNS zones remain separate future workflows.
