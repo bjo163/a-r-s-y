@@ -5,10 +5,11 @@
 - [x] Product narrative and MoonWitness relationship.
 - [x] Brand system and initial SVG concepts.
 - [x] Single-VPS architecture and security boundaries.
-- [x] Docker Compose foundation gateway and install script.
-- [x] GitHub Actions main/release deployment workflow.
-- [x] Restricted deploy account, health check, rollback attempt.
-- [ ] VPS installation and live SSH deployment verification.
+- [x] Docker Compose foundation gateway and installer.
+- [x] App-side version comparison and update-available notice.
+- [x] Consent-based update command.
+- [x] GitHub CI without automatic VPS deployment.
+- [ ] VPS installation and health verification.
 - [ ] Backup destination and restore drill.
 
 ## M1 — ARSY Core alpha
@@ -19,6 +20,7 @@
 - [ ] OIDC identity, operator MFA, organization/project membership.
 - [ ] Resource registry, audit log, API keys.
 - [ ] Idempotent provisioning jobs and OpenAPI contract.
+- [ ] Authenticated one-click update action; only after explicit operator confirmation.
 
 ## M2 — Operations baseline
 
@@ -42,7 +44,7 @@
 
 ## M5 — ARSY Passage
 
-- [ ] Connector enrollment, revocation, credential rotation.
+- [ ] Connector enrollment, revocation, and credential rotation.
 - [ ] FRP or WireGuard-based tunnel adapter.
 - [ ] Per-tenant access policies, health, and audit.
 
@@ -50,18 +52,18 @@
 
 - [ ] Service catalog, plans, quotas, append-only usage ledger.
 - [ ] Invoice preview and payment-provider adapter.
-- [ ] Terms, privacy, acceptable-use, abuse response, support, status page.
+- [ ] Terms, privacy, acceptable-use, abuse response, support, and status page.
 
 ## M7 — ARSY Vault
 
 - [ ] Independent storage capacity and admission control.
-- [ ] S3 API, bucket/key policy, quota and usage lifecycle.
-- [ ] Replication, encryption, backup and restore tests.
+- [ ] S3 API, bucket/key policy, quota, and usage lifecycle.
+- [ ] Replication, encryption, backup, and restore tests.
 
 ## M8 — ARSY Compute
 
 - [ ] Separate compute nodes and tenant isolation model.
-- [ ] K3s, GitOps, resource quotas, network policy, workload telemetry.
+- [ ] K3s, GitOps, resource quotas, network policy, and workload telemetry.
 - [ ] No untrusted workloads on the control-plane node.
 
 ## M9 — IaaS and multi-region
