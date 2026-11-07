@@ -135,6 +135,7 @@ function dashboardPage(user, csrf, profile = {}, domainState = null) {
   const progressHtml =
     '<div class="section-head"><div><div class="eyebrow">ONBOARDING / READINESS</div><h2>First-node progress</h2></div><a class="button button-quiet" href="/onboarding">Review profile</a></div>' +
     '<div class="service-grid">' +
+    '<article class="service-card"><div class="service-icon">00</div><div><h3>Control plane health</h3><p>Authenticated request and database-backed dashboard are responding.</p></div><span class="service-state live">RESPONDING</span></article>' +
     '<article class="service-card"><div class="service-icon">01</div><div><h3>Superadmin</h3><p>Authenticated control-plane owner.</p></div><span class="service-state live">READY</span></article>' +
     '<article class="service-card"><div class="service-icon">02</div><div><h3>Installation profile</h3><p>' + (profileReady ? 'Workspace and installation saved.' : 'Workspace details incomplete.') + '</p></div><span class="service-state ' + (profileReady ? 'live' : 'planned') + '">' + (profileReady ? 'SAVED' : 'INCOMPLETE') + '</span></article>' +
     '<article class="service-card"><div class="service-icon">03</div><div><h3>Core node identity</h3><p>' + (nodeReady ? escapeHtml(profile.nodeName) : 'Node display name is missing.') + '</p></div><span class="service-state ' + (nodeReady ? 'live' : 'planned') + '">' + (nodeReady ? 'SAVED' : 'INCOMPLETE') + '</span></article>' +
@@ -526,7 +527,18 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
   if (targetIpv4 && !/^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$/.test(targetIpv4)) {
     return reply.code(400).send({ ok: false, error: 'Alamat IPv4 tidak valid.' });
   }
-  const profile = { workspaceName, contactEmail, installationName, environment, timezone, language, nodeName, accessMode, hostname: accessMode==='private'?'':hostname, targetIpv4, proxyType, proxyTls: b.proxyTls === true || b.proxyTls === 'true' };
+  const previousProfile = await pool.query('SELECT profile FROM arsy_installation_profile WHERE id = 1');
+  const previousDnsCheck = previousProfile.rows[0]?.profile?.dnsCheck;
+  const activeHostname = accessMode === 'private' ? '' : hostname;
+  const keepDnsCheck = previousDnsCheck &&
+    previousDnsCheck.hostname === activeHostname &&
+    (previousDnsCheck.expectedIpv4 || '') === targetIpv4;
+  const profile = {
+    workspaceName, contactEmail, installationName, environment, timezone, language,
+    nodeName, accessMode, hostname: activeHostname, targetIpv4, proxyType,
+    proxyTls: b.proxyTls === true || b.proxyTls === 'true',
+    ...(keepDnsCheck ? { dnsCheck: previousDnsCheck } : {})
+  };
   await pool.query('UPDATE arsy_installation_profile SET profile=$1::jsonb, onboarding_complete=TRUE, updated_at=NOW() WHERE id=1', [JSON.stringify(profile)]);
   await recordAudit(request.arsySession.user.id, 'onboarding.completed', request, { accessMode, environment, hostname: profile.hostname || null });
   const nextStep = accessMode === 'public'
@@ -540,17 +552,28 @@ app.post('/api/onboarding/profile', { preHandler: requireApiAuth }, async (reque
 app.post('/api/onboarding/dns-check', { preHandler: requireApiAuth }, async (request, reply) => {
   if (!requireCsrf(request, reply)) return;
   const hostname = String(request.body?.hostname || '').trim().toLowerCase();
+  const expected = String(request.body?.targetIpv4 || '').trim();
   if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(hostname)) {
     return reply.code(400).send({ ok: false, error: 'Hostname tidak valid.' });
   }
-  let a = [], aaaa = [];
-  try { a = await resolve4(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
-  try { aaaa = await resolve6(hostname); } catch (error) { if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') throw error; }
-  const expected = String(request.body?.targetIpv4 || '').trim();
+  if (expected && !/^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$/.test(expected)) {
+    return reply.code(400).send({ ok: false, error: 'Alamat IPv4 target tidak valid.' });
+  }
+  let a = [], aaaa = [], dnsErrors = [];
+  try { a = await resolve4(hostname); } catch (error) {
+    if (['ENODATA', 'ENOTFOUND'].includes(error.code)) a = [];
+    else if (error.code === 'EAI_AGAIN') dnsErrors.push('A lookup temporarily unavailable');
+    else throw error;
+  }
+  try { aaaa = await resolve6(hostname); } catch (error) {
+    if (['ENODATA', 'ENOTFOUND'].includes(error.code)) aaaa = [];
+    else if (error.code === 'EAI_AGAIN') dnsErrors.push('AAAA lookup temporarily unavailable');
+    else throw error;
+  }
   const diagnostic = {
     hostname, a, aaaa, expectedIpv4: expected || null,
     matches: expected ? a.includes(expected) : null,
-    checkedAt: new Date().toISOString()
+    dnsErrors, checkedAt: new Date().toISOString()
   };
   await pool.query(
     "UPDATE arsy_installation_profile SET profile = jsonb_set(profile, '{dnsCheck}', $1::jsonb, true), updated_at = NOW() WHERE id = 1",

@@ -205,28 +205,6 @@ test('disposable PostgreSQL API lifecycle and security integration', { skip: !en
     });
 
     await t.test('onboarding persistence, DNS diagnostic and operator status', async () => {
-      const saved = await request('/api/onboarding/profile', {
-        method: 'POST',
-        cookie: sessionCookie,
-        csrf,
-        body: {
-          workspaceName: 'Test Workspace',
-          contactEmail: 'owner@example.com',
-          installationName: 'Test Installation',
-          environment: 'personal',
-          timezone: 'Asia/Jakarta',
-          language: 'id',
-          nodeName: 'Core Test',
-          accessMode: 'private',
-          hostname: '',
-          targetIpv4: '',
-          proxyType: '',
-          proxyTls: false
-        }
-      });
-      assert.equal(saved.status, 200);
-      assert.equal((await saved.json()).ok, true);
-
       const dns = await request('/api/onboarding/dns-check', {
         method: 'POST',
         cookie: sessionCookie,
@@ -240,6 +218,28 @@ test('disposable PostgreSQL API lifecycle and security integration', { skip: !en
       assert.equal(dnsPayload.matches, false);
       assert.ok(dnsPayload.checkedAt);
 
+      const saved = await request('/api/onboarding/profile', {
+        method: 'POST',
+        cookie: sessionCookie,
+        csrf,
+        body: {
+          workspaceName: 'Test Workspace',
+          contactEmail: 'owner@example.com',
+          installationName: 'Test Installation',
+          environment: 'personal',
+          timezone: 'Asia/Jakarta',
+          language: 'id',
+          nodeName: 'Core Test',
+          accessMode: 'public',
+          hostname: 'no-such-name.arsy.invalid',
+          targetIpv4: '203.0.113.10',
+          proxyType: '',
+          proxyTls: false
+        }
+      });
+      assert.equal(saved.status, 200);
+      assert.equal((await saved.json()).ok, true);
+
       const profile = await request('/api/onboarding/profile', { cookie: sessionCookie });
       const profilePayload = await profile.json();
       assert.equal(profilePayload.complete, true);
@@ -251,7 +251,9 @@ test('disposable PostgreSQL API lifecycle and security integration', { skip: !en
       const html = await dashboard.text();
       assert.match(html, /data-timezone="Asia\/Jakarta"/);
       assert.match(html, /DNS diagnostic/);
-      assert.match(html, /Private SSH tunnel/);
+      assert.match(html, /Needs operator activation/);
+      assert.match(html, /Domain activation/);
+      assert.match(html, /Control plane health/);
     });
 
     await t.test('login rejects invalid credentials', async () => {
