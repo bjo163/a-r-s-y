@@ -26,7 +26,7 @@ HOSTNAME="${HOSTNAME,,}"
 
 set_env(){
   local key="$1" value="$2" tmp
-  tmp="$(mktemp)"
+  tmp="$(mktemp "$APP_DIR/.env.XXXXXX")"
   if grep -q "^$key=" "$ENV_FILE"; then
     sed "s|^$key=.*|$key=$value|" "$ENV_FILE" > "$tmp"
   else
