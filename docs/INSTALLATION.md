@@ -64,7 +64,7 @@ The default avoids collisions with an existing Coolify, Dokploy, Caddy, Nginx, o
 ## Commands
 
 ~~~bash
-sudo /opt/arsy/scripts/arsy-doctor.sh
+sudo bash /opt/arsy/scripts/arsy-doctor.sh
 sudo /usr/local/sbin/arsy-deploy "$(git -C /opt/arsy rev-parse HEAD)"
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml ps
 sudo docker compose --env-file /opt/arsy/.env -f /opt/arsy/compose.yaml logs -f
