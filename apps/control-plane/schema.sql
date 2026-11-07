@@ -50,3 +50,12 @@ CREATE TABLE IF NOT EXISTS arsy_audit_events (
 
 CREATE INDEX IF NOT EXISTS arsy_audit_events_created_idx
   ON arsy_audit_events (created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS arsy_installation_profile (
+  id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+  onboarding_complete BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO arsy_installation_profile (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
