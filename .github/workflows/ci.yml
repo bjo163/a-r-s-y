@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: arsy-ci-${{ github.event.pull_request.head.ref || github.ref }}
+  group: arsy-ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
