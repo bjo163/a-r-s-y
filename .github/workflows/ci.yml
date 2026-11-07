@@ -10,12 +10,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: arsy-ci-${{ github.ref }}
+  group: arsy-ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -49,7 +50,9 @@ jobs:
       - name: Install and test control plane
         working-directory: apps/control-plane
         run: |
-          npm install --no-audit --no-fund
+          npm install --no-fund
+          npm audit --omit=dev --audit-level=high
+          npm sbom --omit=dev --sbom-format=cyclonedx > control-plane-sbom.cdx.json
           npm test
           node --check src/server.js
           node --check public/app.js
@@ -59,14 +62,25 @@ jobs:
           ARSY_SETUP_TOKEN: ci-only-dummy-bootstrap-token
           ARSY_SESSION_SECRET: ci-only-dummy-session-secret
         run: docker compose --env-file .env.example -f compose.yaml config --quiet
+      - name: Build production control-plane image
+        run: docker build --pull --tag arsy-control-plane:ci --file apps/control-plane/Dockerfile .
       - name: Validate Caddy configuration
         run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Upload production dependency SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arsy-control-plane-sbom-${{ github.sha }}
+          path: apps/control-plane/control-plane-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Validate shell scripts and isolated regression tests
         shell: bash
         run: |
           set -euo pipefail
           bash -n install.sh
           for script in scripts/*.sh scripts/tests/*.sh; do bash -n "$script"; done
+          bash scripts/tests/arsy-config-validate.test.sh
           bash scripts/tests/env-migrate.test.sh
           bash scripts/tests/network-validation.test.sh
           bash scripts/tests/domain-helper.test.sh

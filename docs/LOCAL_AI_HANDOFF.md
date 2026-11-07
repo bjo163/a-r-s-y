@@ -98,7 +98,7 @@ Current public domain helper is IPv4-only and rejects an AAAA result. Do not des
 
 ### P0 — CI and automated verification
 1. Workflow has Compose config validation, PostgreSQL disposable integration, Caddy validation, Bash syntax, isolated migration/domain/deploy regression and Markdown link checking.
-2. Latest main commit 0e9041e315971d9246fe46e0ee39c5d65d9abca7 generated Actions run 42368111729; at the latest check the validate job was queued with runner_id=0 and zero executed steps. This is neither a pass nor a test failure. An Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status.
+2. Main base SHA for PR #1 is `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`; the current release-hardening PR head is `0502ff30a3696a596fb6fb3eab87efffb5c997f1`. Latest PR workflow run `42394245690` is queued; its `validate` job has no runner assignment or executed steps. Same-SHA push run `42394241695` was cancelled by concurrency. The combined commit status has no completed status entries. This is not a CI pass or test failure.
 3. Do not lower permissions or add secrets. A repository/org Actions administrator must check runner availability, quotas and Actions policy if the queue remains stalled.
 4. After CI runs, fix observed failures, rerun on resulting SHA, and retain actual logs.
 
@@ -175,14 +175,17 @@ sudo bash /opt/arsy/install.sh --repair
 
 Never use `docker compose down -v` as routine repair/update; it deletes the database volume.
 
-## 8. Verification snapshot at handoff
+## 8. Verification snapshot
 
-- Latest implementation commit at this documentation refresh: 0e9041e315971d9246fe46e0ee39c5d65d9abca7.
-- Latest GitHub Actions run checked for current main: 42368111729; status queued, job validate has runner_id=0 and no executed steps. Do not report CI as passing.
-- Automated CI includes Node unit/integration tests, PostgreSQL 17 service, Compose config, Caddy validation, shell syntax, environment/domain/deploy lifecycle mocks and Markdown local-link checking.
-- GitHub issue and PR collections were empty at the latest task audit; recheck before new work.
+- Main base SHA for the current release-hardening PR: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
+- PR #1 head: `0502ff30a3696a596fb6fb3eab87efffb5c997f1` on `fix/release-config-validation`.
+- Latest run `42394245690` (pull_request) is queued with no runner assignment or executed steps. The same-SHA push run `42394241695` was cancelled by concurrency. Neither is a test pass; cancellation is not a failure. Combined commit status currently has no completed status entries.
+- Workflow concurrency now groups push and PR runs by the same branch ref. This reduces duplicate runner requests but has not resolved the queue. Exact cause is unconfirmed; repository/org Actions administrator must inspect Actions policy and hosted-runner availability/quotas.
+- CI includes Node unit/integration tests, PostgreSQL 17 service, Compose/Caddy validation, shell regression tests, docs link checking, production npm audit, CycloneDX SBOM artifact generation, and production control-plane image build. None of these CI gates has been verified on this branch until the workflow executes and logs/artifacts are reviewed.
+- PR #1 is the active release-hardening PR; do not use the historical statement that the PR collection was empty.
 - No real VPS is connected. No SSH access, fresh install, repair, provider DNS/firewall, external browser/TLS, live rollback, remote Restic backup or restore drill has been performed in this work session.
-- Refresh this snapshot after the next workflow or real-host evidence.
+- A documentation-only follow-up commit will itself trigger a new workflow run; always inspect the latest run against the resulting branch SHA.
+
 
 ## 9. Required close-out format for local AI
 
@@ -209,3 +212,15 @@ The agent should make ordinary engineering decisions independently, execute the 
 - Integration tests perform destructive schema cleanup only in a dedicated disposable database.
 - The test now fails before connecting unless DB_NAME is exactly `arsy_test`, DB_USER is exactly `arsy_test`, and DB_HOST is loopback (`127.0.0.1`, `::1`, or `localhost`).
 - This guard reduces accidental remote/production targeting; CI still must execute on the exact current main SHA before this suite is called verified.
+
+## Release-hardening branch addendum — 2026-11-07
+
+**Branch:** `fix/release-config-validation`  
+**PR:** [#1](https://github.com/bjo163/a-r-s-y/pull/1)  
+**Base main:** `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`
+
+The branch adds fail-closed deployment environment validation and architecture checks. A follow-up audit found that the new required `ARSY_ENV_LAYOUT_VERSION=2` was not being seeded by either the fresh installer or deploy/repair defaults. Both paths now seed version 2 after legacy migration and before validation. The config regression test also asserts that both paths retain this default. Do not omit this compatibility check in future changes.
+
+CI now also runs npm production dependency audit (high/critical), generates and uploads a CycloneDX SBOM, and builds the production control-plane Docker image. These gates are committed but not yet verified because the latest workflow remains queued with no runner assignment or steps. Subsequent branch commits create newer runs; inspect the latest run on the final branch SHA rather than treating earlier cancelled runs as failures or passes.
+
+Locally executed evidence before this follow-up: isolated validator positive/negative fixture passed. The newly added install/deploy default assertion and full repository CI still require execution. No fresh VPS install, domain/TLS test, off-site backup, restore drill, or independent security review has been performed. Status remains **pre-alpha / not production-ready**.

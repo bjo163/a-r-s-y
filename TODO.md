@@ -10,11 +10,11 @@ Status key:
 ## P0 — CI and verification reliability
 
 - [~] P0.1 — Get CI to execute on GitHub Actions
-  - Latest main commit checked: 0e9041e. Actions run 42368111729 is queued; its validate job has runner_id=0 and no executed steps. This is not a pass or test failure. The repository/org Actions administrator must inspect hosted-runner availability/quotas, Actions policy and GitHub status; do not try to bypass this gate.
-  - Workflow is configured for push, PR and manual dispatch; permissions remain contents: read.
+  - Current PR head: `0502ff30a3696a596fb6fb3eab87efffb5c997f1`; base main: `9bf2d20c725d97dc54900a5048b0f2efcb8df32a`.
+  - Latest PR workflow run: `42394245690` (`pull_request`), status `queued`; job `validate` has no runner assignment and no executed steps. The same-SHA push run `42394241695` was cancelled by branch-scoped concurrency; cancellation is not a pass or test failure.
+  - Combined commit status has no completed status entries. CI is unverified until the latest exact-head run executes, reaches a terminal result, and its logs/artifacts are reviewed.
+  - GitHub Actions public status was operational during the prior check; exact queue cause remains unconfirmed and may be repository/account-specific. Repository/org Actions administrator must inspect Actions policy and hosted-runner availability/quotas.
   - Do not weaken permissions, add secrets, or bypass required checks to force a result.
-  - Next: repository/org Actions administrator must inspect Actions policy, hosted-runner availability/quotas and GitHub status if the queue remains stalled.
-  - Complete only when a current-main run reaches a terminal result and its actual job steps/logs are reviewed.
 - [~] P0.2 — Compose configuration validation
   - CI runs docker compose config --quiet with CI-only dummy environment values.
   - No containers are deployed and no real credentials are used.
@@ -24,6 +24,15 @@ Status key:
   - Added disposable PostgreSQL 17 coverage for health, setup-once, login, cookie attributes, repeated setup, invalid credentials, CSRF, Origin, timezone and IPv4 validation, DNS diagnostic, pre-save DNS persistence, onboarding profile, dashboard readiness, exact-SHA update approval/audit, logout and session expiry.
   - Database name is hard-limited to arsy_test; tests clean their tables and child process.
   - Pending actual CI execution and failure-log review. Never run against a live database.
+
+- [~] P0.4 — Fail-closed deployment environment validation
+  - Added a dedicated validator for required/unique .env keys, non-empty secrets, PostgreSQL identifiers, listener port ranges/uniqueness, supported bind addresses and cookie mode. Follow-up audit also fixed both fresh-install and deploy/repair paths to seed ARSY_ENV_LAYOUT_VERSION=2 before validation, with a regression assertion in the config test.
+  - Installer validates configuration before deployment; update/repair validates before pulling images or changing the stack and restores the original .env if validation fails.
+  - Negative tests cover empty/duplicate keys, invalid ports/binds, duplicate listener ports and unsafe database identifiers. CI execution remains pending.
+
+- [~] P0.5 — Dependency and build evidence
+  - CI now runs a production dependency audit at high/critical severity, generates a CycloneDX SBOM for production Node dependencies, archives it as a workflow artifact, and builds the actual control-plane production Docker image.
+  - Pending workflow execution and artifact review. Container image vulnerability scanning, license-policy automation, secret scanning and digest pinning remain separate release gates.
 
 ## P1 — Host lifecycle safety
 
@@ -74,7 +83,7 @@ Status key:
 - [x] Added docs/INDEX.md as the canonical document map and source-of-truth precedence.
 - [~] Cross-document links have a CI checker and are included in CI; workflow run is pending.
 - [x] Roadmap milestones declare entry and exit gates.
-- [~] Handoff verification snapshot is synchronized through code commit 0e9041e; refresh again after new CI or VPS evidence.
+- [~] Full handoff restored from main and augmented with release-hardening branch notes; refresh again after new CI or VPS evidence.
 
 ## Explicitly not next
 

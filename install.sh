@@ -29,13 +29,19 @@ if [[ -f /var/lib/arsy/deployed-sha && "${1:-}" != "--repair" ]]; then
   log "Use 'sudo arsy-update' to check for an update, or run 'sudo bash install.sh --repair' for an explicit repair/reinstall."
   exit 0
 fi
+
+ARCH="$(dpkg --print-architecture)"
+case "$ARCH" in
+  amd64|arm64) ;;
+  *) die "Unsupported architecture: $ARCH. Supported architectures: amd64 and arm64." ;;
+esac
 if [[ -n "${1:-}" && "${1:-}" != "--repair" ]]; then
   die "Usage: sudo bash install.sh [--repair]"
 fi
 
 log "Preflight summary"
 printf '  OS             %s %s\n' "$PRETTY_NAME" "${VERSION_ID:-}"
-printf '  Architecture   %s\n' "$(dpkg --print-architecture)"
+printf '  Architecture   %s\n' "$ARCH"
 printf '  Hostname       %s\n' "$(hostname -f 2>/dev/null || hostname)"
 printf '  CPU cores      %s\n' "$(nproc)"
 printf '  Memory         %s\n' "$(awk '/MemTotal/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)"
@@ -70,7 +76,7 @@ if [[ "$NEED_DOCKER_CLI" -eq 1 || "$NEED_COMPOSE_PLUGIN" -eq 1 ]]; then
   curl -fsSL "https://download.docker.com/linux/$DISTRO/gpg" -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
   printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
-    "$(dpkg --print-architecture)" "$DISTRO" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
+    "$ARCH" "$DISTRO" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
   apt-get update
 
   if [[ "$NEED_DOCKER_CLI" -eq 1 ]]; then
@@ -110,6 +116,7 @@ ensure_env() {
 
 touch .env
 bash scripts/arsy-env-migrate.sh .env
+ensure_env ARSY_ENV_LAYOUT_VERSION "2"
 ensure_env ARSY_HTTP_PORT "18080"
 ensure_env ARSY_PUBLIC_HTTP_BIND "127.0.0.1"
 ensure_env ARSY_PUBLIC_HTTP_PORT "18081"
@@ -124,6 +131,7 @@ ensure_env ARSY_SESSION_SECRET "$(openssl rand -hex 48)"
 ensure_env ARSY_SETUP_TOKEN "$(openssl rand -hex 32)"
 ensure_env ARSY_COOKIE_SECURE "false"
 chmod 0600 .env
+bash scripts/arsy-config-validate.sh .env
 
 install -d -m 0750 /var/log/arsy
 install -d -m 0755 /var/lib/arsy
@@ -133,6 +141,7 @@ install -m 0755 scripts/arsy-update.sh /usr/local/sbin/arsy-update
 install -m 0755 scripts/arsy-doctor.sh /usr/local/sbin/arsy-doctor
 install -m 0755 scripts/arsy-domain.sh /usr/local/sbin/arsy-domain
 install -m 0755 scripts/arsy-env-migrate.sh /usr/local/sbin/arsy-env-migrate
+install -m 0755 scripts/arsy-config-validate.sh /usr/local/sbin/arsy-config-validate
 install -m 0755 scripts/arsy-network.sh /usr/local/sbin/arsy-network.sh
 install -m 0755 scripts/arsy-backup.sh /usr/local/sbin/arsy-backup
 install -m 0755 scripts/arsy-restore-drill.sh /usr/local/sbin/arsy-restore-drill
